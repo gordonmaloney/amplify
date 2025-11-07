@@ -24,7 +24,7 @@ export default function Home() {
             real message from a trusted friend.
           </Typography>
           <Typography paragraph>
-            That's what this tool is for: a tool for organisers to use the
+            That's what this tool is for: for organisers to make use the
             organic networks of members and supporters to amplify our messages -
             despite the best efforts of Musk and Zuckerberg.
           </Typography>
