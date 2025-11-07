@@ -4,7 +4,7 @@ export const campaign = {
     "Help spread the word about Living Rent's new report exposing rogue landlords in Leith.",
   url: "https://tenantact.org/rogue-landlords",
   image: "/sample-image.jpeg", // place in /public for dev
-  variants: [
+  variants: [ 
     {
       key: "whatsapp",
       label: "WhatsApp",
