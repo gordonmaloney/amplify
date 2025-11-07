@@ -19,7 +19,7 @@ import {
 } from "@mui/material";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
-import { campaign as initialCampaign } from "./Data";
+import { campaign as initialCampaign } from "./DummyData";
 import Previews from "./Previews";
 import Interstitial from "./Interstitial";
 
