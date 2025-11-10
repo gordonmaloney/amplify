@@ -7,9 +7,7 @@ export default function Home() {
       <Card variant="outlined">
         <CardHeader title="Amplify" subheader="from Living Rent" />
         <CardContent>
-          <Typography variant="h5" sx={{ mb: 2 }}>
-            Building power with real relationships
-          </Typography>
+
           <Typography paragraph>
             Billionares, oligarchs and tech-bros can buy our social networks,
             newspapers and TV stations. They can flood the internet with bots.
