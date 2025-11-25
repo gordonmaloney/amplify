@@ -1,7 +1,7 @@
 export const campaign = {
-	title: "Rogue Landlords Open Letter Delivered",
+	title: "Rogue Landlords Open Letter",
 	description:
-		"Living Rent Leith has delivered a major open letter demanding the council crack down on rogue landlords. Share the news!",
+		"20+ orgs have backed an open letter demanding Edinburgh Council crack down on rogue landlords. Will you share the story in your networks so it has the biggest impact possible?",
 	url: "",
 	image: "/image.png", // place in /public for dev
 	variants: [
