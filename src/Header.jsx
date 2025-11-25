@@ -4,22 +4,26 @@ import { Link as RouterLink } from "react-router-dom";
 
 const Header = () => {
   return (
-    <AppBar position="static" color="default" elevation={0}>
-      <Toolbar>
-        <Typography variant="h6" sx={{ flexGrow: 1 }}>
-          <RouterLink to="../">Amplify</RouterLink>
-        </Typography>
+		<AppBar
+			position="static"
+			elevation={0}
+			sx={{ backgroundColor: "rgb(9, 124, 53)", color: 'white'}}
+		>
+			<Toolbar>
+				<Typography variant="h4" sx={{ flexGrow: 1 }}>
+					<RouterLink to="../" style={{color: 'white', fontFamily: "Bebas Neue"}}>AMPLIFY</RouterLink>
+				</Typography>
 
-        <Button
-          component={RouterLink}
-          to="/campaign"
-          sx={{ textTransform: "none" }}
-        >
-          Campaign
-        </Button>
-      </Toolbar>
-    </AppBar>
-  );
+				<Button
+					component={RouterLink}
+					to="/campaign"
+					sx={{ textTransform: "none" }}
+				>
+					Campaign
+				</Button>
+			</Toolbar>
+		</AppBar>
+	);
 };
 
 export default Header;

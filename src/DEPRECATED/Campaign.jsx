@@ -87,7 +87,6 @@ export default function Campaign() {
     setUrl(url)
   };
 
-  console.log(url)
 
   return (
     <Box sx={{ maxWidth: 600, mx: "auto", my: 4, p: 2 }}>

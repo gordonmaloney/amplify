@@ -9,7 +9,7 @@ export default function Home() {
         <CardContent>
 
           <Typography paragraph>
-            Billionares, oligarchs and tech-bros can buy our social networks,
+            Billionares, oligarchs and loser tech-bros can buy our social networks,
             newspapers and TV stations. They can flood the internet with bots.
             They can manipulate algorithms and platform policies to push
             misinformation and advertising.

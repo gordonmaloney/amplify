@@ -6,7 +6,7 @@ import {
   Link as RouterLink,
 } from "react-router-dom";
 import { Box } from "@mui/material";
-import Campaign from "./Campaign";
+import Campaign from "./Campaign/Campaign";
 import Home from "./Home";
 import Header from "./Header";
 
