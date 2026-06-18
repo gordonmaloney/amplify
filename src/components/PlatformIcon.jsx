@@ -1,5 +1,6 @@
 import React from "react";
 import { SvgIcon } from "@mui/material";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import PublicIcon from "@mui/icons-material/Public";
@@ -46,6 +47,8 @@ export default function PlatformIcon({ platform, ...props }) {
       return <BlueskyIcon {...props} />;
     case "sms":
       return <SmsIcon {...props} />;
+    case "copy":
+      return <ContentCopyIcon {...props} />;
     default:
       return <PublicIcon {...props} />;
   }

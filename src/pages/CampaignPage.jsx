@@ -14,6 +14,12 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Link as RouterLink, useParams } from "react-router-dom";
 import ShareCardSelector from "../components/ShareCardSelector";
 import ShareComposer from "../components/ShareComposer";
+import {
+  getCardsForSharingMode,
+  getDefaultSharingModeId,
+  getSharingMode,
+  sharingModes,
+} from "../config/shareModes";
 import { getCampaignBySlug } from "../data/campaigns";
 
 export default function CampaignPage() {
@@ -22,6 +28,10 @@ export default function CampaignPage() {
   const [selectedCardId, setSelectedCardId] = useState(
     campaign?.shareCards[0]?.id || ""
   );
+  const [selectedSharingModeId, setSelectedSharingModeId] = useState(
+    getDefaultSharingModeId()
+  );
+  const [shareStep, setShareStep] = useState(1);
   const isMobileFlow = useMediaQuery("(max-width:700px)");
   const [mobileStep, setMobileStep] = useState(0);
 
@@ -36,7 +46,11 @@ export default function CampaignPage() {
 
   useEffect(() => {
     if (!campaign) return;
-    setSelectedCardId(campaign.shareCards[0]?.id || "");
+    const defaultModeId = getDefaultSharingModeId();
+    const modeCards = getCardsForSharingMode(campaign.shareCards, defaultModeId);
+    setSelectedSharingModeId(defaultModeId);
+    setSelectedCardId(modeCards[0]?.id || campaign.shareCards[0]?.id || "");
+    setShareStep(1);
     setEditedTextByCard(initialEditedText);
     setMobileStep(0);
   }, [campaign, initialEditedText]);
@@ -66,11 +80,26 @@ export default function CampaignPage() {
     );
   }
 
+  const selectedSharingMode = getSharingMode(selectedSharingModeId);
+  const modeCards = getCardsForSharingMode(
+    campaign.shareCards,
+    selectedSharingMode.id
+  );
   const selectedCard =
-    campaign.shareCards.find((card) => card.id === selectedCardId) ||
+    modeCards.find((card) => card.id === selectedCardId) ||
+    modeCards[0] ||
     campaign.shareCards[0];
   const editedText =
     editedTextByCard[selectedCard.id] ?? selectedCard.defaultText;
+
+  function updateSharingMode(modeId) {
+    const nextMode = getSharingMode(modeId);
+    const nextModeCards = getCardsForSharingMode(campaign.shareCards, nextMode.id);
+    setSelectedSharingModeId(nextMode.id);
+    if (!nextModeCards.some((card) => card.id === selectedCardId)) {
+      setSelectedCardId(nextModeCards[0]?.id || campaign.shareCards[0]?.id || "");
+    }
+  }
 
   function updateEditedText(value) {
     setEditedTextByCard((current) => ({
@@ -87,11 +116,16 @@ export default function CampaignPage() {
           editedText={editedText}
           onEditedTextChange={updateEditedText}
           campaign={campaign}
+          sharingModes={sharingModes}
+          selectedSharingMode={selectedSharingMode}
+          onSelectSharingMode={updateSharingMode}
+          shareStep={shareStep}
+          onShareStepChange={setShareStep}
           mobileStep={mobileStep}
           onMobileStepChange={setMobileStep}
           channelSelector={
             <ShareCardSelector
-              shareCards={campaign.shareCards}
+              shareCards={modeCards}
               selectedId={selectedCard.id}
               onSelect={setSelectedCardId}
             />
@@ -104,9 +138,14 @@ export default function CampaignPage() {
             shareCard={selectedCard}
             editedText={editedText}
             onEditedTextChange={updateEditedText}
+            sharingModes={sharingModes}
+            selectedSharingMode={selectedSharingMode}
+            onSelectSharingMode={updateSharingMode}
+            shareStep={shareStep}
+            onShareStepChange={setShareStep}
             channelSelector={
               <ShareCardSelector
-                shareCards={campaign.shareCards}
+                shareCards={modeCards}
                 selectedId={selectedCard.id}
                 onSelect={setSelectedCardId}
               />

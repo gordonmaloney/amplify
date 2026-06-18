@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -10,9 +10,10 @@ import {
   Typography,
 } from "@mui/material";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import DynamicFeedOutlinedIcon from "@mui/icons-material/DynamicFeedOutlined";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SendIcon from "@mui/icons-material/Send";
 import PlatformPreviewFrame from "./PlatformPreviewFrame";
@@ -23,11 +24,17 @@ import ShareFlowStep from "./ShareFlowStep";
 import { copyToClipboard } from "../utils/clipboard";
 import { downloadImage } from "../utils/downloads";
 import { buildShareUrl, platformHomeUrl } from "../utils/shareLinks";
+import { getMessageTitle, SHARING_MODE_IDS } from "../config/shareModes";
 
 export default function ShareComposer({
   shareCard,
   editedText,
   onEditedTextChange,
+  sharingModes = [],
+  selectedSharingMode,
+  onSelectSharingMode,
+  shareStep,
+  onShareStepChange,
   channelSelector,
   campaign,
   mobileStep,
@@ -35,11 +42,29 @@ export default function ShareComposer({
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [initialCopyStatus, setInitialCopyStatus] = useState("waiting");
+  const stepTwoMessageRef = useRef(null);
 
   const shareUrl = buildShareUrl(shareCard, editedText);
   const characterCount = editedText.length;
   const characterLimit = getCharacterLimit(shareCard.platform);
   const shouldShareImage = Boolean(shareCard.imageUrl && shareCard.requiresImage);
+  const selectedModeId = selectedSharingMode?.id || SHARING_MODE_IDS.askDirectly;
+  const messageTitle = getMessageTitle(shareCard.platform, selectedModeId);
+  const isMobile = campaign && typeof mobileStep === "number";
+  const isFinalMobileShareStep = isMobile && mobileStep === 1;
+
+  useEffect(() => {
+    if (!isMobile || shareStep !== 2 || isFinalMobileShareStep) return undefined;
+
+    const scrollId = window.setTimeout(() => {
+      stepTwoMessageRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 80);
+
+    return () => window.clearTimeout(scrollId);
+  }, [isFinalMobileShareStep, isMobile, shareStep, selectedModeId]);
 
   async function handlePrimaryShare() {
     const shouldPrepareClipboard = !shareUrl || shouldShareImage;
@@ -53,7 +78,16 @@ export default function ShareComposer({
     setModalOpen(true);
   }
 
-  if (campaign && typeof mobileStep === "number") {
+  function handlePrimaryAction() {
+    if (isMobile && onMobileStepChange) {
+      onMobileStepChange(1);
+      return;
+    }
+
+    handlePrimaryShare();
+  }
+
+  if (isFinalMobileShareStep) {
     return (
       <MobileShareFlow
         campaign={campaign}
@@ -64,6 +98,7 @@ export default function ShareComposer({
         mobileStep={mobileStep}
         onMobileStepChange={onMobileStepChange}
         shareUrl={shareUrl}
+        channelLabel={shareCard.platformLabel}
         characterCount={characterCount}
         characterLimit={characterLimit}
         shouldShareImage={shouldShareImage}
@@ -71,120 +106,164 @@ export default function ShareComposer({
     );
   }
 
-  return (
+  const composerCard = (
     <Paper className="share-action-card" variant="outlined">
-      <Box className="share-action-intro">
-        <Typography variant="h1" className="share-action-title">
-          Share this action
-        </Typography>
-        <Typography className="share-action-subtitle">
-          Personalise the pre-written message below, then share it on your
-          channels to help spread the word.
-        </Typography>
-      </Box>
-
-      <Box className="message-workspace">
-        <Box className="share-to-row">
-          {channelSelector}
+      <Box className="share-flow-panel">
+        <Box className="share-action-intro">
+          <Typography variant="h1" className="share-action-title">
+            Share this action
+          </Typography>
+          <Typography className="share-action-subtitle">
+            {shareStep === 1
+              ? "Choose what kind of message you want to share. You'll pick the channel and edit the message next."
+              : "Choose the channel and make the message your own."}
+          </Typography>
         </Box>
 
-        <Box className="message-tab-body">
-          <Box className="desktop-post-meta-row">
-            <Box className="desktop-post-header">
-              <Box className="desktop-post-avatar">
-                <PlatformIcon platform={shareCard.platform} fontSize="small" />
+        {shareStep === 1 ? (
+          <ShareModeStep
+            sharingModes={sharingModes}
+            selectedModeId={selectedModeId}
+            onSelectSharingMode={onSelectSharingMode}
+            onChooseMode={(modeId) => {
+              onSelectSharingMode(modeId);
+              onShareStepChange(2);
+            }}
+          />
+        ) : (
+          <Box className="share-step-two">
+            <Box className="sharing-mode-summary">
+              <Box className="sharing-mode-summary-copy">
+                <Typography className="sharing-mode-summary-label">
+                  Sharing mode
+                </Typography>
+                <Typography className="sharing-mode-summary-title">
+                  {selectedSharingMode.label}
+                </Typography>
               </Box>
-              <Box className="desktop-post-heading-copy">
-                <Typography className="desktop-post-title">
-                  Your post template
-                </Typography>
-                <Typography className="desktop-post-subtitle">
-                  Prepared for {shareCard.platformLabel}
-                </Typography>
+              <Stack direction="row" gap={0.75} className="sharing-mode-switcher">
+                {sharingModes.map((mode) => (
+                  <Button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => onSelectSharingMode(mode.id)}
+                    className="sharing-mode-switch"
+                    data-selected={mode.id === selectedModeId}
+                  >
+                    {mode.id === selectedModeId
+                      ? mode.label
+                      : `Switch to ${
+                          mode.id === SHARING_MODE_IDS.askDirectly
+                            ? "direct"
+                            : "group/feed"
+                        }`}
+                  </Button>
+                ))}
+              </Stack>
+            </Box>
+
+            <Typography className="share-step-label">Step 2 of 2</Typography>
+
+            <Typography className="share-channel-label">
+              Where are you sharing it?
+            </Typography>
+            <Box
+              className="message-workspace two-step-message-workspace"
+              ref={stepTwoMessageRef}
+            >
+              <Box className="share-to-row">{channelSelector}</Box>
+
+              <Box className="message-tab-body">
+                <Box className="message-editor-section">
+                  <Box
+                    className={`desktop-template-card${
+                      shouldShareImage ? " desktop-template-card-with-image" : ""
+                    }`}
+                  >
+                    <Box className="message-editor-wrap">
+                      <Box className="message-title-strip">
+                        <Typography className="desktop-post-title">
+                          {messageTitle}
+                        </Typography>
+                        <Typography className="desktop-post-subtitle">
+                          Prepared for {shareCard.platformLabel}
+                        </Typography>
+                      </Box>
+                      <TextField
+                        id="share-message"
+                        value={editedText}
+                        onChange={(event) => onEditedTextChange(event.target.value)}
+                        multiline
+                        minRows={5}
+                        fullWidth
+                        inputProps={{ "aria-label": "Edit your campaign message" }}
+                        className="message-textarea"
+                      />
+                      {characterLimit && (
+                        <Typography
+                          className="character-count"
+                          data-over-limit={characterCount > characterLimit}
+                          aria-live="polite"
+                        >
+                          {characterCount} / {characterLimit}
+                        </Typography>
+                      )}
+                    </Box>
+                    {shouldShareImage && (
+                      <Box className="desktop-template-attachment">
+                        <Box
+                          component="img"
+                          src={shareCard.imageUrl}
+                          alt=""
+                          className="desktop-template-image"
+                        />
+                        <Stack spacing={0.25} className="desktop-template-image-copy">
+                          <Typography className="image-share-title">
+                            Suggested campaign image
+                          </Typography>
+                          <Typography>
+                            Attach this image in the send step if you want the
+                            post to stand out.
+                          </Typography>
+                        </Stack>
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
               </Box>
             </Box>
 
             <Stack
               direction="row"
-              spacing={1}
+              justifyContent="space-between"
               alignItems="center"
-              className="selected-channel-helper"
+              gap={2}
+              className="step-two-actions"
             >
-              <InfoOutlinedIcon fontSize="small" />
-              <Typography>{shareCard.guidance}</Typography>
-            </Stack>
-          </Box>
-
-          <Box className="message-editor-section">
-            <Typography component="label" htmlFor="share-message" className="message-editor-label">
-              Your message
-            </Typography>
-
-            <Box
-              className={`desktop-template-card${
-                shouldShareImage ? " desktop-template-card-with-image" : ""
-              }`}
-            >
-              <Box className="message-editor-wrap">
-                <TextField
-                  id="share-message"
-                  value={editedText}
-                  onChange={(event) => onEditedTextChange(event.target.value)}
-                  multiline
-                  minRows={6}
-                  fullWidth
-                  inputProps={{ "aria-label": "Edit your campaign message" }}
-                  className="message-textarea"
-                />
-                {characterLimit && (
-                  <Typography
-                    className="character-count"
-                    data-over-limit={characterCount > characterLimit}
-                    aria-live="polite"
-                  >
-                    {characterCount} / {characterLimit}
-                  </Typography>
-                )}
-              </Box>
-              {shouldShareImage && (
-                <Box className="desktop-template-attachment">
-                  <Box
-                    component="img"
-                    src={shareCard.imageUrl}
-                    alt=""
-                    className="desktop-template-image"
-                  />
-                  <Stack spacing={0.25} className="desktop-template-image-copy">
-                    <Typography className="image-share-title">
-                      Suggested campaign image
-                    </Typography>
-                    <Typography>
-                      Attach this image in the send step if you want the post to
-                      stand out.
-                    </Typography>
-                  </Stack>
-                </Box>
-              )}
-            </Box>
-
-            <Stack direction="row" flexWrap="wrap" gap={2} className="share-action-buttons">
+              <Button
+                type="button"
+                onClick={() => onShareStepChange(1)}
+                className="share-back-link"
+              >
+                Back
+              </Button>
               <Button
                 variant="contained"
                 startIcon={<SendIcon />}
-                onClick={handlePrimaryShare}
+                onClick={handlePrimaryAction}
                 className="primary-share-button"
               >
-                Share on {shareCard.platformLabel}
+                {isMobile ? "Preview and share" : `Share on ${shareCard.platformLabel}`}
               </Button>
             </Stack>
-          </Box>
-        </Box>
-      </Box>
 
-      <Stack direction="row" spacing={1} alignItems="center" className="privacy-note">
-        <LockOutlinedIcon fontSize="small" />
-        <Typography>No account needed. We don&apos;t store your message.</Typography>
-      </Stack>
+            <Box className="share-bottom-tip">
+              <InfoOutlinedIcon fontSize="small" />
+              <Typography>{selectedSharingMode.tip}</Typography>
+            </Box>
+          </Box>
+        )}
+      </Box>
 
       <ShareFlowModal
         open={modalOpen}
@@ -195,6 +274,76 @@ export default function ShareComposer({
         initialCopyStatus={initialCopyStatus}
       />
     </Paper>
+  );
+
+  if (isMobile) {
+    return (
+      <Box className="mobile-flow-shell">
+        <MobileCampaignBrief campaign={campaign} />
+        {composerCard}
+      </Box>
+    );
+  }
+
+  return composerCard;
+}
+
+function ShareModeStep({
+  sharingModes,
+  selectedModeId,
+  onChooseMode,
+}) {
+  return (
+    <>
+      <Box className="share-step-divider" />
+      <Typography className="share-step-label">Step 1 of 2</Typography>
+      <Box className="sharing-mode-grid">
+        {sharingModes.map((mode) => (
+          <Button
+            key={mode.id}
+            type="button"
+            onClick={() => onChooseMode(mode.id)}
+            className="sharing-mode-card"
+            data-selected={selectedModeId === mode.id}
+          >
+            {mode.recommended && (
+              <Box component="span" className="sharing-mode-recommended">
+                Recommended
+              </Box>
+            )}
+            <Box className="sharing-mode-icon">
+              {mode.id === SHARING_MODE_IDS.askDirectly ? (
+                <ChatBubbleOutlineIcon fontSize="small" />
+              ) : (
+                <DynamicFeedOutlinedIcon fontSize="small" />
+              )}
+            </Box>
+            <Typography className="sharing-mode-card-title">{mode.label}</Typography>
+            <Typography className="sharing-mode-card-description">
+              {mode.description}
+            </Typography>
+            <Box className="sharing-mode-examples">
+              <Typography className="sharing-mode-examples-label">
+                Examples
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={0.75}>
+                {mode.examples.map((example) => (
+                  <Box key={example} className="sharing-mode-example-pill">
+                    {example}
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          </Button>
+        ))}
+      </Box>
+      <Box className="share-step-footer">
+        <Stack direction="row" spacing={1} alignItems="center" className="share-change-note">
+          <InfoOutlinedIcon fontSize="small" />
+          <Typography>You can change this later.</Typography>
+        </Stack>
+      </Box>
+    </>
   );
 }
 
@@ -207,6 +356,7 @@ function MobileShareFlow({
   mobileStep,
   onMobileStepChange,
   shareUrl,
+  channelLabel,
   characterCount,
   characterLimit,
   shouldShareImage,
@@ -339,12 +489,12 @@ function MobileShareFlow({
     key: "open",
     status: "ready",
     icon: <OpenInNewIcon />,
-    title: `Now open ${shareCard.platformLabel}`,
+    title: `Now open ${channelLabel}`,
     body: getMobileFinalInstruction({
       canOpenPreparedShare,
       copyFailed,
       needsManualImage: shouldShareImage,
-      platformLabel: shareCard.platformLabel,
+      platformLabel: channelLabel,
       shouldCopyText,
     }),
   });
@@ -402,7 +552,7 @@ function MobileShareFlow({
                 >
                   <Box className="mobile-current-platform">
                     <PlatformIcon platform={shareCard.platform} fontSize="small" />
-                    <Typography>{shareCard.platformLabel}</Typography>
+                    <Typography>{channelLabel}</Typography>
                   </Box>
                   <Box className="mobile-change-platform-button">
                     Change platform
@@ -439,18 +589,18 @@ function MobileShareFlow({
               <PlatformIcon platform={shareCard.platform} fontSize="small" />
               <Box>
                 <Typography className="mobile-native-title">
-                  Share on {shareCard.platformLabel}
+                  Share on {channelLabel}
                 </Typography>
                 <Typography className="mobile-native-subtitle">
-                  Finish inside {shareCard.platformLabel}
+                  Finish inside {channelLabel}
                 </Typography>
               </Box>
             </Box>
             <Stack spacing={1} className="mobile-share-instructions">
               <Typography>
                 {shouldCopyText || shouldShareImage
-                  ? `Getting your post ready for ${shareCard.platformLabel}.`
-                  : `Open ${shareCard.platformLabel}, check it, then send.`}
+                  ? `Getting your post ready for ${channelLabel}.`
+                  : `Open ${channelLabel}, check it, then send.`}
               </Typography>
               <Box className="mobile-flow-step-stack">
                 {flowSteps.map((step, index) => (
@@ -476,7 +626,7 @@ function MobileShareFlow({
                   startIcon={<OpenInNewIcon />}
                   className="mobile-primary-button"
                 >
-                  Open {shareCard.platformLabel}{hasOnlyOpenStep ? " now" : ""}
+                  Open {channelLabel}{hasOnlyOpenStep ? " now" : ""}
                 </Button>
               )}
             </Stack>
