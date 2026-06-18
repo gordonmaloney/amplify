@@ -12,8 +12,17 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { Link as RouterLink, useParams } from "react-router-dom";
-import ShareCardSelector from "../components/ShareCardSelector";
+import ShareCardSelector, {
+  ShareRouteSelector,
+} from "../components/ShareCardSelector";
 import ShareComposer from "../components/ShareComposer";
+import {
+  getCardsForRoute,
+  getFirstAvailableRouteId,
+  getShareCardRouteId,
+  getShareRoute,
+  shareRoutes,
+} from "../config/shareRoutes";
 import { getCampaignBySlug } from "../data/campaigns";
 
 export default function CampaignPage() {
@@ -21,6 +30,9 @@ export default function CampaignPage() {
   const campaign = getCampaignBySlug(campaignSlug);
   const [selectedCardId, setSelectedCardId] = useState(
     campaign?.shareCards[0]?.id || ""
+  );
+  const [selectedRouteId, setSelectedRouteId] = useState(
+    campaign ? getFirstAvailableRouteId(campaign.shareCards) : shareRoutes[0].id
   );
   const isMobileFlow = useMediaQuery("(max-width:700px)");
   const [mobileStep, setMobileStep] = useState(0);
@@ -36,7 +48,9 @@ export default function CampaignPage() {
 
   useEffect(() => {
     if (!campaign) return;
-    setSelectedCardId(campaign.shareCards[0]?.id || "");
+    const firstRouteId = getFirstAvailableRouteId(campaign.shareCards);
+    setSelectedRouteId(firstRouteId);
+    setSelectedCardId(getCardsForRoute(campaign.shareCards, firstRouteId)[0]?.id || "");
     setEditedTextByCard(initialEditedText);
     setMobileStep(0);
   }, [campaign, initialEditedText]);
@@ -66,11 +80,25 @@ export default function CampaignPage() {
     );
   }
 
+  const routeCards = getCardsForRoute(campaign.shareCards, selectedRouteId);
   const selectedCard =
-    campaign.shareCards.find((card) => card.id === selectedCardId) ||
+    routeCards.find((card) => card.id === selectedCardId) ||
+    routeCards[0] ||
     campaign.shareCards[0];
+  const selectedRoute = getShareRoute(
+    getShareCardRouteId(selectedCard) || selectedRouteId
+  );
   const editedText =
     editedTextByCard[selectedCard.id] ?? selectedCard.defaultText;
+
+  function updateSelectedRoute(routeId) {
+    const nextRouteCards = getCardsForRoute(campaign.shareCards, routeId);
+    if (!nextRouteCards.length) return;
+
+    setSelectedRouteId(routeId);
+    setSelectedCardId(nextRouteCards[0].id);
+    setMobileStep(0);
+  }
 
   function updateEditedText(value) {
     setEditedTextByCard((current) => ({
@@ -87,13 +115,24 @@ export default function CampaignPage() {
           editedText={editedText}
           onEditedTextChange={updateEditedText}
           campaign={campaign}
+          shareRoute={selectedRoute}
           mobileStep={mobileStep}
           onMobileStepChange={setMobileStep}
+          routeSelector={
+            <ShareRouteSelector
+              routes={shareRoutes.filter(
+                (route) => getCardsForRoute(campaign.shareCards, route.id).length
+              )}
+              selectedId={selectedRoute.id}
+              onSelect={updateSelectedRoute}
+            />
+          }
           channelSelector={
             <ShareCardSelector
-              shareCards={campaign.shareCards}
+              shareCards={routeCards}
               selectedId={selectedCard.id}
               onSelect={setSelectedCardId}
+              routeId={selectedRoute.id}
             />
           }
         />
@@ -104,11 +143,22 @@ export default function CampaignPage() {
             shareCard={selectedCard}
             editedText={editedText}
             onEditedTextChange={updateEditedText}
+            shareRoute={selectedRoute}
+            routeSelector={
+              <ShareRouteSelector
+                routes={shareRoutes.filter(
+                  (route) => getCardsForRoute(campaign.shareCards, route.id).length
+                )}
+                selectedId={selectedRoute.id}
+                onSelect={updateSelectedRoute}
+              />
+            }
             channelSelector={
               <ShareCardSelector
-                shareCards={campaign.shareCards}
+                shareCards={routeCards}
                 selectedId={selectedCard.id}
                 onSelect={setSelectedCardId}
+                routeId={selectedRoute.id}
               />
             }
           />

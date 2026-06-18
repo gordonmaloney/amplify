@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
+  Chip,
   Link,
   Paper,
   Popover,
@@ -20,14 +21,56 @@ import PlatformIcon from "./PlatformIcon";
 import PlatformTip from "./PlatformTips";
 import ShareFlowModal from "./ShareFlowModal";
 import ShareFlowStep from "./ShareFlowStep";
+import { getRoutePlatformLabel, SHARE_ROUTE_IDS } from "../config/shareRoutes";
 import { copyToClipboard } from "../utils/clipboard";
 import { downloadImage } from "../utils/downloads";
 import { buildShareUrl, platformHomeUrl } from "../utils/shareLinks";
+
+const directSuggestions = [
+  "someone who rents",
+  "someone who came before",
+  "someone in your branch",
+  "someone affected by this",
+  "someone who would come if asked",
+];
+
+const audienceSuggestions = [
+  "someone who rents",
+  "someone who came before",
+  "someone in your branch",
+  "someone affected by this",
+  "someone who would come if asked",
+];
+
+const directCoachChips = [
+  { label: "I thought of you because...", text: "I thought of you because..." },
+  {
+    label: "This made me think of you because...",
+    text: "This made me think of you because...",
+  },
+  { label: "Could you take one minute to...", text: "Could you take one minute to..." },
+  { label: "No pressure, but...", text: "No pressure, but..." },
+];
+
+const wideCoachChips = [
+  { label: "Sharing this here because...", text: "Sharing this here because..." },
+  {
+    label: "This is especially relevant locally because...",
+    text: "This is especially relevant locally because...",
+  },
+  {
+    label: "The most useful thing you can do is...",
+    text: "The most useful thing you can do is...",
+  },
+  { label: "If you rent, please...", text: "If you rent, please..." },
+];
 
 export default function ShareComposer({
   shareCard,
   editedText,
   onEditedTextChange,
+  shareRoute,
+  routeSelector,
   channelSelector,
   campaign,
   mobileStep,
@@ -35,23 +78,144 @@ export default function ShareComposer({
 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [initialCopyStatus, setInitialCopyStatus] = useState("waiting");
+  const [directTargets, setDirectTargets] = useState([]);
+  const [audiences, setAudiences] = useState([]);
+  const [selectedRelationalChip, setSelectedRelationalChip] = useState("");
+  const [relationalInput, setRelationalInput] = useState("");
+  const [templateFields, setTemplateFields] = useState({
+    why: "",
+    area: "",
+    ask: "",
+    deadline: "",
+  });
+  const editorInputRef = useRef(null);
+  const isDirectRoute = shareRoute?.id === SHARE_ROUTE_IDS.direct;
+  const relationalChips = isDirectRoute ? directTargets : audiences;
+  const coachChips = isDirectRoute ? directCoachChips : wideCoachChips;
+  const routeHeading = getRouteHeading(shareRoute?.id);
+  const coachText = isDirectRoute
+    ? "Use their name. Say why you thought of them. Make one clear ask."
+    : "Say why you're posting it here. Add a local, branch or audience-specific line.";
+  const messageForSharing = prepareMessageForSharing(editedText, {
+    routeId: shareRoute?.id,
+    selectedRelationalChip,
+    templateFields,
+    link: shareCard.urlToShare || campaign?.primaryUrl || "",
+  });
 
-  const shareUrl = buildShareUrl(shareCard, editedText);
-  const characterCount = editedText.length;
+  const shareUrl = buildShareUrl(shareCard, messageForSharing);
+  const characterCount = messageForSharing.length;
   const characterLimit = getCharacterLimit(shareCard.platform);
   const shouldShareImage = Boolean(shareCard.imageUrl && shareCard.requiresImage);
+  const channelLabel = getRoutePlatformLabel(shareCard, shareRoute?.id);
+  const messageLabel = getMessageLabel(shareCard.platform, shareRoute?.id);
+  const readinessItems = getReadinessItems({
+    editedText,
+    defaultText: shareCard.defaultText,
+    isDirectRoute,
+    messageForSharing,
+    selectedRelationalChip,
+    shareCard,
+  });
+
+  useEffect(() => {
+    setSelectedRelationalChip("");
+    setRelationalInput("");
+  }, [shareRoute?.id, shareCard.id]);
 
   async function handlePrimaryShare() {
     const shouldPrepareClipboard = !shareUrl || shouldShareImage;
     if (shouldPrepareClipboard) {
       setInitialCopyStatus("running");
-      const copied = await copyToClipboard(editedText);
+      const copied = await copyToClipboard(messageForSharing);
       setInitialCopyStatus(copied ? "done" : "failed");
     } else {
       setInitialCopyStatus("skipped");
     }
     setModalOpen(true);
   }
+
+  function addRelationalChip(label) {
+    const normalizedLabel = label.trim();
+    if (!normalizedLabel) return;
+
+    const updateChips = (currentChips) =>
+      currentChips.includes(normalizedLabel)
+        ? currentChips
+        : [...currentChips, normalizedLabel];
+
+    if (isDirectRoute) {
+      setDirectTargets(updateChips);
+    } else {
+      setAudiences(updateChips);
+    }
+    setSelectedRelationalChip(normalizedLabel);
+    setRelationalInput("");
+  }
+
+  function insertStarterText(text) {
+    const textArea = editorInputRef.current;
+    const hasSelection =
+      textArea &&
+      typeof textArea.selectionStart === "number" &&
+      typeof textArea.selectionEnd === "number";
+    const insertion = text;
+
+    if (!hasSelection) {
+      const separator = editedText.trim() ? "\n\n" : "";
+      onEditedTextChange(`${editedText}${separator}${insertion}`);
+      return;
+    }
+
+    const { selectionStart, selectionEnd } = textArea;
+    const needsLeadingSpace =
+      selectionStart > 0 && !/[\s\n]$/.test(editedText.slice(0, selectionStart));
+    const needsTrailingSpace =
+      selectionEnd < editedText.length &&
+      !/^[\s\n]/.test(editedText.slice(selectionEnd));
+    const insertedText = `${needsLeadingSpace ? " " : ""}${insertion}${
+      needsTrailingSpace ? " " : ""
+    }`;
+    const nextText = `${editedText.slice(0, selectionStart)}${insertedText}${editedText.slice(
+      selectionEnd
+    )}`;
+    const nextCursor = selectionStart + insertedText.length;
+    onEditedTextChange(nextText);
+    window.requestAnimationFrame(() => {
+      textArea.focus();
+      textArea.setSelectionRange(nextCursor, nextCursor);
+    });
+  }
+
+  const relationalPrompt = shareRoute && (
+    <RelationalPrompt
+      isDirectRoute={isDirectRoute}
+      chips={relationalChips}
+      suggestions={isDirectRoute ? directSuggestions : audienceSuggestions}
+      selectedChip={selectedRelationalChip}
+      inputValue={relationalInput}
+      onInputChange={setRelationalInput}
+      onAddChip={addRelationalChip}
+      onSelectChip={setSelectedRelationalChip}
+    />
+  );
+
+  const coach = shareRoute && (
+    <PersonalisationCoach
+      helperText={coachText}
+      isDirectRoute={isDirectRoute}
+      coachChips={coachChips}
+      onInsert={insertStarterText}
+    />
+  );
+
+  const tokenFields = (
+    <TemplateTokenFields
+      message={editedText}
+      values={templateFields}
+      onChange={setTemplateFields}
+    />
+  );
 
   if (campaign && typeof mobileStep === "number") {
     return (
@@ -60,13 +224,23 @@ export default function ShareComposer({
         shareCard={shareCard}
         editedText={editedText}
         onEditedTextChange={onEditedTextChange}
+        shareRoute={shareRoute}
+        routeSelector={routeSelector}
         channelSelector={channelSelector}
         mobileStep={mobileStep}
         onMobileStepChange={onMobileStepChange}
         shareUrl={shareUrl}
+        channelLabel={channelLabel}
+        messageForSharing={messageForSharing}
+        relationalPrompt={relationalPrompt}
+        coach={coach}
+        tokenFields={tokenFields}
+        editorInputRef={editorInputRef}
         characterCount={characterCount}
         characterLimit={characterLimit}
         shouldShareImage={shouldShareImage}
+        messageLabel={messageLabel}
+        readinessItems={readinessItems}
       />
     );
   }
@@ -83,7 +257,28 @@ export default function ShareComposer({
         </Typography>
       </Box>
 
+      {routeSelector && (
+        <Box className="route-selection-section">
+          <Typography className="route-selection-label">
+            How do you want to share?
+          </Typography>
+          {routeSelector}
+        </Box>
+      )}
+
+      {routeHeading && (
+        <Box className="route-context-heading">
+          <Typography className="route-context-title">{routeHeading.title}</Typography>
+          <Typography className="route-context-subtitle">
+            {routeHeading.subtitle}
+          </Typography>
+        </Box>
+      )}
+
       <Box className="message-workspace">
+        <Box className="share-step-heading">
+          <Typography className="share-step-title">Choose where to share</Typography>
+        </Box>
         <Box className="share-to-row">
           {channelSelector}
         </Box>
@@ -96,10 +291,10 @@ export default function ShareComposer({
               </Box>
               <Box className="desktop-post-heading-copy">
                 <Typography className="desktop-post-title">
-                  Your post template
+                  {messageLabel}
                 </Typography>
                 <Typography className="desktop-post-subtitle">
-                  Prepared for {shareCard.platformLabel}
+                  Prepared for {channelLabel}
                 </Typography>
               </Box>
             </Box>
@@ -116,9 +311,21 @@ export default function ShareComposer({
           </Box>
 
           <Box className="message-editor-section">
+            {relationalPrompt}
             <Typography component="label" htmlFor="share-message" className="message-editor-label">
-              Your message
+              3. {messageLabel}
             </Typography>
+            {shareRoute?.editorNote && (
+              <Stack
+                direction="row"
+                spacing={1}
+                className="route-editor-note"
+              >
+                <InfoOutlinedIcon fontSize="small" />
+                <Typography>{shareRoute.editorNote}</Typography>
+              </Stack>
+            )}
+            {tokenFields}
 
             <Box
               className={`desktop-template-card${
@@ -131,8 +338,10 @@ export default function ShareComposer({
                   value={editedText}
                   onChange={(event) => onEditedTextChange(event.target.value)}
                   multiline
-                  minRows={6}
+                  minRows={4}
+                  maxRows={10}
                   fullWidth
+                  inputRef={editorInputRef}
                   inputProps={{ "aria-label": "Edit your campaign message" }}
                   className="message-textarea"
                 />
@@ -166,6 +375,24 @@ export default function ShareComposer({
                 </Box>
               )}
             </Box>
+            {selectedRelationalChip && messageForSharing !== editedText && (
+              <Box className="personalised-preview">
+                <Typography className="personalised-preview-title">
+                  Personalised preview
+                </Typography>
+                <Typography>{messageForSharing}</Typography>
+              </Box>
+            )}
+            {coach}
+
+            <ReadinessStatus
+              isDirectRoute={isDirectRoute}
+              items={readinessItems}
+              unchangedFromDefault={isUnchangedFromDefault(
+                editedText,
+                shareCard.defaultText
+              )}
+            />
 
             <Stack direction="row" flexWrap="wrap" gap={2} className="share-action-buttons">
               <Button
@@ -174,7 +401,7 @@ export default function ShareComposer({
                 onClick={handlePrimaryShare}
                 className="primary-share-button"
               >
-                Share on {shareCard.platformLabel}
+                Share on {channelLabel}
               </Button>
             </Stack>
           </Box>
@@ -190,7 +417,7 @@ export default function ShareComposer({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         shareCard={shareCard}
-        editedText={editedText}
+        editedText={messageForSharing}
         shareUrl={shareUrl}
         initialCopyStatus={initialCopyStatus}
       />
@@ -203,13 +430,23 @@ function MobileShareFlow({
   shareCard,
   editedText,
   onEditedTextChange,
+  shareRoute,
+  routeSelector,
   channelSelector,
   mobileStep,
   onMobileStepChange,
   shareUrl,
+  channelLabel,
+  messageForSharing,
+  relationalPrompt,
+  coach,
+  tokenFields,
+  editorInputRef,
   characterCount,
   characterLimit,
   shouldShareImage,
+  messageLabel,
+  readinessItems,
 }) {
   const preparedShareUrl = shareUrl || platformHomeUrl(shareCard.platform);
   const canOpenPreparedShare = Boolean(shareUrl);
@@ -222,6 +459,7 @@ function MobileShareFlow({
   const copyFailed = copyStatus === "failed";
   const hasOnlyOpenStep = !shouldCopyText && !shouldShareImage;
   const platformMenuOpen = Boolean(platformMenuAnchor);
+  const routeHeading = getRouteHeading(shareRoute?.id);
 
   useEffect(() => {
     setPlatformMenuAnchor(null);
@@ -240,7 +478,7 @@ function MobileShareFlow({
 
       if (shouldCopyText) {
         await wait(700);
-        const copied = await copyToClipboard(editedText);
+        const copied = await copyToClipboard(messageForSharing);
         if (cancelled) return;
         setCopyStatus(copied ? "done" : "failed");
         if (copied) setCopyToastId((currentId) => currentId + 1);
@@ -269,7 +507,7 @@ function MobileShareFlow({
       cancelled = true;
     };
   }, [
-    editedText,
+    messageForSharing,
     mobileStep,
     shareCard.imageUrl,
     shouldCopyText,
@@ -277,7 +515,7 @@ function MobileShareFlow({
   ]);
 
   async function copyAgain() {
-    const copied = await copyToClipboard(editedText);
+    const copied = await copyToClipboard(messageForSharing);
     setCopyStatus(copied ? "done" : "failed");
     if (copied) setCopyToastId((currentId) => currentId + 1);
   }
@@ -339,12 +577,12 @@ function MobileShareFlow({
     key: "open",
     status: "ready",
     icon: <OpenInNewIcon />,
-    title: `Now open ${shareCard.platformLabel}`,
+    title: `Now open ${channelLabel}`,
     body: getMobileFinalInstruction({
       canOpenPreparedShare,
       copyFailed,
       needsManualImage: shouldShareImage,
-      platformLabel: shareCard.platformLabel,
+      platformLabel: channelLabel,
       shouldCopyText,
     }),
   });
@@ -356,21 +594,38 @@ function MobileShareFlow({
           <MobileCampaignBrief campaign={campaign} />
           <Paper variant="outlined" className="mobile-stage-card mobile-compose-stage">
             <Stack spacing={1.25} className="mobile-compose-content">
-              <Stack direction="row" spacing={1} className="mobile-guidance">
-                <InfoOutlinedIcon fontSize="small" />
-                <Typography>
-                  Here&apos;s a template message. Personalise it if you can:
-                  the more it sounds like you, the better.
-                </Typography>
-              </Stack>
+              {routeSelector && (
+                <Box className="mobile-route-section">
+                  <Typography className="mobile-section-label">
+                    How do you want to share?
+                  </Typography>
+                  {routeSelector}
+                </Box>
+              )}
+              {routeHeading && (
+                <Box className="route-context-heading mobile-route-context-heading">
+                  <Typography className="route-context-title">
+                    {routeHeading.title}
+                  </Typography>
+                  <Typography className="route-context-subtitle">
+                    {routeHeading.subtitle}
+                  </Typography>
+                </Box>
+              )}
+              <Box className="mobile-channel-strip">{channelSelector}</Box>
+              {relationalPrompt}
+              <Typography component="label" className="message-editor-label">
+                3. {messageLabel}
+              </Typography>
               <Box className="mobile-native-composer">
                 <TextField
                   value={editedText}
                   onChange={(event) => onEditedTextChange(event.target.value)}
                   multiline
-                  minRows={7}
-                  maxRows={10}
+                  minRows={5}
+                  maxRows={9}
                   fullWidth
+                  inputRef={editorInputRef}
                   inputProps={{ "aria-label": "Edit your campaign message" }}
                   className="mobile-native-textarea"
                 />
@@ -394,6 +649,24 @@ function MobileShareFlow({
                   </Box>
                 )}
               </Box>
+              {tokenFields}
+              {messageForSharing !== editedText && (
+                <Box className="personalised-preview mobile-personalised-preview">
+                  <Typography className="personalised-preview-title">
+                    Personalised preview
+                  </Typography>
+                  <Typography>{messageForSharing}</Typography>
+                </Box>
+              )}
+              {coach}
+              <ReadinessStatus
+                isDirectRoute={shareRoute?.id === SHARE_ROUTE_IDS.direct}
+                items={readinessItems}
+                unchangedFromDefault={isUnchangedFromDefault(
+                  editedText,
+                  shareCard.defaultText
+                )}
+              />
               <Box className="mobile-compose-action-row">
                 <Button
                   type="button"
@@ -402,7 +675,7 @@ function MobileShareFlow({
                 >
                   <Box className="mobile-current-platform">
                     <PlatformIcon platform={shareCard.platform} fontSize="small" />
-                    <Typography>{shareCard.platformLabel}</Typography>
+                    <Typography>{channelLabel}</Typography>
                   </Box>
                   <Box className="mobile-change-platform-button">
                     Change platform
@@ -439,18 +712,18 @@ function MobileShareFlow({
               <PlatformIcon platform={shareCard.platform} fontSize="small" />
               <Box>
                 <Typography className="mobile-native-title">
-                  Share on {shareCard.platformLabel}
+                  Share on {channelLabel}
                 </Typography>
                 <Typography className="mobile-native-subtitle">
-                  Finish inside {shareCard.platformLabel}
+                  Finish inside {channelLabel}
                 </Typography>
               </Box>
             </Box>
             <Stack spacing={1} className="mobile-share-instructions">
               <Typography>
                 {shouldCopyText || shouldShareImage
-                  ? `Getting your post ready for ${shareCard.platformLabel}.`
-                  : `Open ${shareCard.platformLabel}, check it, then send.`}
+                  ? `Getting your post ready for ${channelLabel}.`
+                  : `Open ${channelLabel}, check it, then send.`}
               </Typography>
               <Box className="mobile-flow-step-stack">
                 {flowSteps.map((step, index) => (
@@ -476,17 +749,17 @@ function MobileShareFlow({
                   startIcon={<OpenInNewIcon />}
                   className="mobile-primary-button"
                 >
-                  Open {shareCard.platformLabel}{hasOnlyOpenStep ? " now" : ""}
+                  Open {channelLabel}{hasOnlyOpenStep ? " now" : ""}
                 </Button>
               )}
             </Stack>
             <Box className="mobile-full-preview">
-              <PlatformPreviewFrame shareCard={shareCard} message={editedText} />
+              <PlatformPreviewFrame shareCard={shareCard} message={messageForSharing} />
             </Box>
             {copyFailed && (
               <TextField
                 label="Text to copy"
-                value={editedText}
+                value={messageForSharing}
                 multiline
                 minRows={4}
                 fullWidth
@@ -538,10 +811,301 @@ function MobileCampaignBrief({ campaign }) {
   );
 }
 
+function getRouteHeading(routeId) {
+  if (routeId === SHARE_ROUTE_IDS.direct) {
+    return {
+      title: "Ask someone directly",
+      subtitle:
+        "Pick someone who might care, then send them a message that sounds like you.",
+    };
+  }
+
+  if (routeId === SHARE_ROUTE_IDS.wide) {
+    return {
+      title: "Promote in a group or feed",
+      subtitle:
+        "Share this somewhere relevant, with one line explaining why this audience should care.",
+    };
+  }
+
+  return null;
+}
+
+function getMessageLabel(platform, routeId) {
+  if (routeId === SHARE_ROUTE_IDS.direct) {
+    if (platform === "whatsapp") return "Your personal ask";
+    if (platform === "sms") return "Your text message";
+    return "Your message";
+  }
+
+  if (platform === "whatsapp" || platform === "signal" || platform === "telegram") {
+    return "Your group message";
+  }
+  if (platform === "facebook") return "Your Facebook post";
+  if (platform === "instagram") return "Your caption";
+  if (platform === "tiktok") return "Your caption or video prompt";
+
+  return "Your message";
+}
+
+function getReadinessItems({
+  editedText,
+  defaultText,
+  isDirectRoute,
+  messageForSharing,
+  selectedRelationalChip,
+  shareCard,
+}) {
+  const trimmedMessage = messageForSharing.trim();
+  const hasLink = Boolean(
+    shareCard.urlToShare &&
+      (trimmedMessage.includes(shareCard.urlToShare) ||
+        shareCard.shareMode === "direct")
+  );
+  const hasPersonalLine =
+    Boolean(selectedRelationalChip) ||
+    editedText.split(/\n+/).some((line) => {
+      const normalizedLine = line.trim().toLowerCase();
+      return (
+        normalizedLine.startsWith("i thought") ||
+        normalizedLine.startsWith("this made me think") ||
+        normalizedLine.startsWith("no pressure") ||
+        normalizedLine.startsWith("sharing this here") ||
+        normalizedLine.includes("because")
+      );
+    });
+  const unchangedFromDefault = isUnchangedFromDefault(editedText, defaultText);
+
+  if (isDirectRoute) {
+    return [
+      { label: "Clear ask", complete: hasClearAsk(trimmedMessage) },
+      {
+        label: "Link included, if applicable",
+        complete: !shareCard.urlToShare || hasLink,
+      },
+      {
+        label: "Personal line added, if applicable",
+        complete: hasPersonalLine || !selectedRelationalChip,
+      },
+    ];
+  }
+
+  return [
+    { label: "Clear ask", complete: hasClearAsk(trimmedMessage) },
+    { label: "Link handled for this channel", complete: !shareCard.urlToShare || hasLink },
+    { label: "Audience context added", complete: hasPersonalLine },
+    { label: "Not just the untouched default, if applicable", complete: !unchangedFromDefault },
+  ];
+}
+
+function ReadinessStatus({ isDirectRoute, items, unchangedFromDefault }) {
+  return (
+    <Box className="message-readiness">
+      <Stack direction="row" flexWrap="wrap" gap={0.75} className="readiness-chip-row">
+        {items.map((item) => (
+          <Box
+            key={item.label}
+            className="readiness-chip"
+            data-complete={item.complete}
+          >
+            <span aria-hidden="true" />
+            <Typography>{item.label}</Typography>
+          </Box>
+        ))}
+      </Stack>
+      {!isDirectRoute && unchangedFromDefault && (
+        <Typography className="readiness-nudge">
+          Group and public posts work better when they sound like a real person.
+          Add one line if you can.
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+function RelationalPrompt({
+  isDirectRoute,
+  chips,
+  suggestions,
+  selectedChip,
+  inputValue,
+  onInputChange,
+  onAddChip,
+  onSelectChip,
+}) {
+  const title = isDirectRoute
+    ? "1. Who are you asking?"
+    : "1. Who is this for?";
+  const placeholder = isDirectRoute
+    ? "Add a name or reminder, e.g. Aisha, Mum, Ben from work"
+    : "Add an audience, e.g. branch WhatsApp group, local tenants' group";
+  const helpText = isDirectRoute
+    ? "These names stay on this device and are not saved."
+    : "This is just to help you shape the message. It is not saved.";
+  const secondaryPrompt = isDirectRoute
+    ? "Need ideas? Think of someone who rents, someone in your branch, or someone who would come if personally invited."
+    : "";
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    onAddChip(inputValue);
+  }
+
+  return (
+    <Box className="relational-prompt">
+      <Typography className="relational-prompt-title">{title}</Typography>
+      <Box component="form" className="relational-chip-form" onSubmit={handleSubmit}>
+        <TextField
+          value={inputValue}
+          onChange={(event) => onInputChange(event.target.value)}
+          placeholder={placeholder}
+          size="small"
+          fullWidth
+          inputProps={{ "aria-label": title }}
+          className="relational-chip-input"
+        />
+        <Button type="submit" variant="outlined" className="relational-add-button">
+          Add
+        </Button>
+      </Box>
+      <ChipRow
+        chips={[...chips, ...suggestions.filter((chip) => !chips.includes(chip))]}
+        selectedChip={selectedChip}
+        onSelectChip={(chip) => {
+          if (!chips.includes(chip)) onAddChip(chip);
+          else onSelectChip(chip);
+        }}
+      />
+      <Typography className="relational-privacy-note">{helpText}</Typography>
+      {secondaryPrompt && (
+        <Typography className="relational-secondary-prompt">
+          {secondaryPrompt}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+function ChipRow({ chips, selectedChip, onSelectChip }) {
+  return (
+    <Stack direction="row" flexWrap="wrap" gap={0.75} className="prompt-chip-row">
+      {chips.map((chip) => (
+        <Chip
+          key={chip}
+          label={chip}
+          size="small"
+          onClick={() => onSelectChip(chip)}
+          className="prompt-chip"
+          data-selected={selectedChip === chip}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+function PersonalisationCoach({ helperText, isDirectRoute, coachChips, onInsert }) {
+  return (
+    <Box className="personalisation-coach">
+      <Typography className="personalisation-coach-title">
+        {isDirectRoute ? "2. Make the message personal" : "2. Make it relevant"}
+      </Typography>
+      <Typography className="personalisation-coach-text">{helperText}</Typography>
+      <Stack direction="row" flexWrap="wrap" gap={0.75} className="coach-chip-row">
+        {coachChips.map((chip) => (
+          <Chip
+            key={chip.label}
+            label={chip.label}
+            size="small"
+            onClick={() => onInsert(chip.text)}
+            className="coach-chip"
+          />
+        ))}
+      </Stack>
+    </Box>
+  );
+}
+
+function TemplateTokenFields({ message, values, onChange }) {
+  const fields = [
+    { token: "why", label: "Why this matters" },
+    { token: "area", label: "Local detail" },
+    { token: "ask", label: "Clear ask" },
+    { token: "deadline", label: "Deadline" },
+  ].filter((field) => message.includes(`{${field.token}}`));
+
+  if (!fields.length) return null;
+
+  return (
+    <Box className="template-token-fields">
+      {fields.map((field) => (
+        <TextField
+          key={field.token}
+          value={values[field.token]}
+          label={field.label}
+          size="small"
+          fullWidth
+          onChange={(event) =>
+            onChange((currentValues) => ({
+              ...currentValues,
+              [field.token]: event.target.value,
+            }))
+          }
+        />
+      ))}
+    </Box>
+  );
+}
+
+function prepareMessageForSharing(
+  message,
+  { routeId, selectedRelationalChip, templateFields, link }
+) {
+  let nextMessage = message
+    .replaceAll("{name}", selectedRelationalChip || "")
+    .replaceAll("{why}", templateFields.why || "")
+    .replaceAll("{area}", templateFields.area || "")
+    .replaceAll("{ask}", templateFields.ask || "")
+    .replaceAll("{deadline}", templateFields.deadline || "")
+    .replaceAll("{link}", link || "");
+
+  if (
+    routeId === SHARE_ROUTE_IDS.direct &&
+    selectedRelationalChip &&
+    !message.includes("{name}") &&
+    !startsWithGreeting(nextMessage, selectedRelationalChip)
+  ) {
+    nextMessage = `Hi ${selectedRelationalChip}, ${lowercaseFirstLetter(nextMessage)}`;
+  }
+
+  return nextMessage;
+}
+
+function startsWithGreeting(message, name) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^(hi|hey|hello)\\s+${escapedName}\\b`, "i").test(
+    message.trim()
+  );
+}
+
+function lowercaseFirstLetter(text) {
+  if (!text) return text;
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 function getCharacterLimit(platform) {
   if (platform === "twitter" || platform === "x") return 280;
   if (platform === "bluesky") return 300;
   return null;
+}
+
+function hasClearAsk(message) {
+  return /\b(can you|please|share|send|sign|email|join|come|read|take|ask|help|do it|post|tell)\b/i.test(
+    message
+  );
+}
+
+function isUnchangedFromDefault(message, defaultText) {
+  return message.trim() === defaultText.trim();
 }
 
 function wait(ms) {

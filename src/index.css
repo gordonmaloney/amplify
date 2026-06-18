@@ -1699,7 +1699,7 @@ body[data-theme="light"]
 
 .campaign-desktop-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
   gap: 24px;
   align-items: start;
 }
@@ -1719,13 +1719,13 @@ body[data-theme="light"]
 .campaign-context-aside {
   position: sticky;
   top: 104px;
-  padding: 14px;
+  padding: 12px;
 }
 
 .campaign-aside-image {
   width: 100%;
   height: auto;
-  max-height: min(46vh, 420px);
+  max-height: min(36vh, 320px);
   display: block;
   object-fit: contain;
   border-radius: 8px;
@@ -1871,10 +1871,122 @@ body[data-theme="light"]
   line-height: 1.5 !important;
 }
 
+.route-selection-section {
+  margin-top: 22px;
+}
+
+.route-selection-label,
+.mobile-section-label {
+  display: block;
+  margin-bottom: 9px !important;
+  color: var(--campaign-ink) !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+}
+
+.route-card-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.route-card-option {
+  min-width: 0 !important;
+  max-width: 100%;
+  min-height: 76px;
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 5px;
+  padding: 12px 14px !important;
+  border: 1px solid var(--campaign-border) !important;
+  border-radius: 8px !important;
+  background: color-mix(
+    in srgb,
+    var(--campaign-card-bg) 92%,
+    transparent
+  ) !important;
+  color: var(--campaign-ink) !important;
+  text-align: left !important;
+  text-transform: none !important;
+  white-space: normal !important;
+}
+
+.route-card-option:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--campaign-green) 34%,
+    var(--campaign-border)
+  ) !important;
+  background: color-mix(
+    in srgb,
+    var(--campaign-card-bg) 90%,
+    var(--preview-link-surface)
+  ) !important;
+}
+
+.route-card-option.Mui-selected,
+.route-card-option.Mui-selected:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--campaign-green) 58%,
+    var(--campaign-border)
+  ) !important;
+  background: color-mix(
+    in srgb,
+    var(--campaign-card-bg) 76%,
+    var(--campaign-green-soft)
+  ) !important;
+  box-shadow: inset 3px 0 0 var(--campaign-green);
+}
+
+.route-card-title {
+  min-width: 0;
+  max-width: 100%;
+  color: currentColor;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+.route-card-description {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--campaign-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal !important;
+}
+
+.route-context-heading {
+  margin-top: 14px;
+  padding: 0;
+}
+
+.route-context-title {
+  color: var(--campaign-ink) !important;
+  font-size: 22px !important;
+  font-weight: 900 !important;
+  line-height: 1.15 !important;
+}
+
+.route-context-subtitle {
+  margin-top: 4px !important;
+  color: var(--campaign-muted) !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+}
+
 .message-workspace {
   --message-tab-rail: #ecefeb;
   --message-tab-body: #fbfcf7;
-  margin-top: 22px;
+  margin-top: 16px;
   padding: 0;
   border: 1px solid var(--campaign-border);
   border-radius: 10px;
@@ -1885,6 +1997,17 @@ body[data-theme="light"]
 .share-to-row {
   border-bottom: 1px solid var(--campaign-border);
   background: var(--message-tab-rail);
+}
+
+.share-step-heading {
+  padding: 14px 18px 8px;
+  background: var(--message-tab-rail);
+}
+
+.share-step-title {
+  color: var(--campaign-ink) !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
 }
 
 .channel-card-grid {
@@ -1954,12 +2077,7 @@ body[data-theme="light"]
 }
 
 .message-tab-body {
-  background: linear-gradient(
-      180deg,
-      var(--campaign-green-soft),
-      transparent 130px
-    ),
-    var(--message-tab-body);
+  background: var(--message-tab-body);
 }
 
 .desktop-post-meta-row {
@@ -1984,9 +2102,9 @@ body[data-theme="light"]
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: var(--campaign-green-soft);
-  color: var(--campaign-green);
-  border: 1px solid rgba(49, 113, 68, 0.22);
+  background: color-mix(in srgb, var(--campaign-card-bg) 88%, transparent);
+  color: var(--campaign-muted);
+  border: 1px solid var(--campaign-border);
 }
 
 .desktop-post-avatar svg {
@@ -2037,6 +2155,191 @@ body[data-theme="light"]
   color: var(--campaign-ink) !important;
   font-size: 14px !important;
   font-weight: 900 !important;
+}
+
+.relational-prompt {
+  margin-bottom: 14px;
+  padding: 0 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--campaign-border);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.relational-prompt-title,
+.personalised-preview-title {
+  color: var(--campaign-ink) !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+}
+
+.relational-chip-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.relational-chip-input .MuiOutlinedInput-root {
+  min-height: 38px;
+  border-radius: 7px !important;
+  background: color-mix(in srgb, var(--campaign-card-bg) 92%, transparent);
+  color: var(--campaign-ink) !important;
+}
+
+.relational-chip-input input {
+  color: var(--campaign-ink) !important;
+  font-size: 14px !important;
+}
+
+.relational-add-button {
+  min-height: 38px !important;
+  border-color: rgba(49, 113, 68, 0.38) !important;
+  color: var(--campaign-green) !important;
+  border-radius: 7px !important;
+  font-weight: 900 !important;
+}
+
+.prompt-chip-row,
+.coach-chip-row {
+  margin-top: 10px;
+}
+
+.prompt-chip,
+.coach-chip {
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid var(--campaign-border) !important;
+  background: color-mix(in srgb, var(--campaign-card-bg) 94%, transparent) !important;
+  color: var(--campaign-muted) !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.prompt-chip .MuiChip-label,
+.coach-chip .MuiChip-label {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prompt-chip[data-selected="true"] {
+  border-color: color-mix(
+    in srgb,
+    var(--campaign-green) 68%,
+    var(--campaign-border)
+  ) !important;
+  background: var(--campaign-green-soft) !important;
+  color: var(--campaign-green) !important;
+}
+
+.relational-privacy-note {
+  margin-top: 8px !important;
+  color: var(--campaign-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+.relational-secondary-prompt {
+  margin-top: 7px !important;
+  color: var(--campaign-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.route-editor-note {
+  align-items: flex-start;
+  margin: -2px 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--campaign-muted);
+}
+
+.route-editor-note svg {
+  color: var(--campaign-green);
+  margin-top: 1px;
+}
+
+.route-editor-note .MuiTypography-root {
+  color: var(--campaign-muted) !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.template-token-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.template-token-fields .MuiOutlinedInput-root {
+  border-radius: 7px !important;
+  background: color-mix(in srgb, var(--campaign-card-bg) 92%, transparent);
+  color: var(--campaign-ink) !important;
+}
+
+.template-token-fields input,
+.template-token-fields label {
+  color: var(--campaign-ink) !important;
+}
+
+.personalised-preview {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid rgba(49, 113, 68, 0.16);
+  border-radius: 8px;
+  background: color-mix(
+    in srgb,
+    var(--campaign-card-bg) 82%,
+    var(--campaign-green-soft)
+  );
+}
+
+.personalised-preview .MuiTypography-root:not(.personalised-preview-title) {
+  margin-top: 5px !important;
+  color: var(--campaign-muted) !important;
+  font-size: 14px !important;
+  line-height: 1.45 !important;
+  white-space: pre-wrap;
+}
+
+.personalisation-coach {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--campaign-border);
+}
+
+.personalisation-coach-title {
+  color: var(--campaign-ink) !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  margin-bottom: 5px !important;
+}
+
+.personalisation-coach-text {
+  color: var(--campaign-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+
+.coach-chip {
+  cursor: pointer;
+}
+
+.coach-chip:hover,
+.prompt-chip:hover {
+  border-color: color-mix(
+    in srgb,
+    var(--campaign-green) 48%,
+    var(--campaign-border)
+  ) !important;
+  color: var(--campaign-green) !important;
 }
 
 .image-share-note {
@@ -2132,6 +2435,7 @@ body[data-theme="light"]
 
 .message-textarea textarea {
   color: var(--campaign-ink) !important;
+  min-height: 150px !important;
 }
 
 .desktop-template-attachment {
@@ -2175,8 +2479,68 @@ body[data-theme="light"]
 }
 
 .share-action-buttons {
-  margin-top: 20px;
+  margin-top: 14px;
   justify-content: center;
+}
+
+.message-readiness {
+  margin-top: 16px;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--campaign-border);
+}
+
+.readiness-chip-row {
+  align-items: center;
+}
+
+.readiness-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid var(--campaign-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--campaign-card-bg) 94%, transparent);
+  color: var(--campaign-muted);
+}
+
+.readiness-chip span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+
+.readiness-chip[data-complete="true"] {
+  border-color: color-mix(
+    in srgb,
+    var(--campaign-green) 35%,
+    var(--campaign-border)
+  );
+  color: var(--campaign-green);
+  background: color-mix(in srgb, var(--campaign-card-bg) 88%, var(--campaign-green-soft));
+}
+
+.readiness-chip[data-complete="true"] span {
+  border-color: var(--campaign-green);
+  background: var(--campaign-green);
+  box-shadow: inset 0 0 0 2px var(--campaign-card-bg);
+}
+
+.readiness-chip .MuiTypography-root {
+  color: currentColor !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+}
+
+.readiness-nudge {
+  margin-top: 8px !important;
+  color: var(--campaign-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
 }
 
 .primary-share-button {
@@ -2382,6 +2746,7 @@ body[data-theme="light"]
   .mobile-flow-shell {
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
     width: calc(100vw - 32px);
     max-width: calc(100vw - 32px);
     margin-left: 16px;
@@ -2504,6 +2869,29 @@ body[data-theme="light"]
     border: 1px solid var(--campaign-border);
     border-radius: 12px;
     overflow: hidden;
+  }
+
+  .mobile-route-section {
+    display: grid;
+    gap: 8px;
+  }
+
+  .mobile-route-section .route-card-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .mobile-route-section .route-card-option {
+    min-height: 70px;
+    padding: 10px 12px !important;
+  }
+
+  .mobile-route-section .route-card-title {
+    font-size: 15px;
+  }
+
+  .mobile-route-section .route-card-description {
+    font-size: 13px;
   }
 
   .mobile-channel-strip .channel-card-option {
@@ -2743,11 +3131,11 @@ body[data-theme="light"]
   }
 
   .mobile-flow-shell {
-    width: 100vw !important;
-    max-width: 100vw !important;
+    width: min(358px, calc(100vw - 32px)) !important;
+    max-width: min(358px, calc(100vw - 32px)) !important;
     min-height: calc(100dvh - 88px);
-    margin: 0 !important;
-    padding: 10px 12px 14px;
+    margin: 0 16px !important;
+    padding: 10px 0 14px;
     gap: 10px;
     overflow: visible;
   }
@@ -2800,9 +3188,23 @@ body[data-theme="light"]
     font-size: 24px !important;
     line-height: 0.95 !important;
     max-width: 100%;
-    white-space: normal;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  .mobile-blurb-copy,
+  .mobile-route-section,
+  .mobile-route-section .route-card-grid,
+  .mobile-route-section .route-card-option,
+  .route-context-heading,
+  .mobile-native-composer,
+  .mobile-compose-stage .relational-prompt,
+  .mobile-compose-stage .personalisation-coach,
+  .message-readiness {
+    min-width: 0;
+    max-width: 100%;
     overflow-wrap: anywhere;
-    word-break: break-word;
   }
 
   .mobile-blurb-copy {
@@ -2848,6 +3250,7 @@ body[data-theme="light"]
     display: flex;
     flex-direction: column;
     height: auto;
+    min-width: 0;
     padding: 11px;
   }
 
@@ -2866,6 +3269,11 @@ body[data-theme="light"]
     overflow: hidden;
   }
 
+  .mobile-route-section .route-card-option {
+    min-height: 70px;
+    padding: 10px 12px !important;
+  }
+
   .mobile-channel-strip .channel-card-grid {
     min-width: 0;
     max-width: 100%;
@@ -2881,6 +3289,73 @@ body[data-theme="light"]
   .mobile-guidance {
     padding: 0 2px;
     flex: 0 0 auto;
+    min-width: 0;
+  }
+
+  .mobile-guidance .MuiTypography-root {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+  }
+
+  .mobile-compose-stage .relational-prompt {
+    margin-bottom: 0;
+    padding: 0 0 10px;
+    border-radius: 0;
+    overflow: hidden;
+  }
+
+  .mobile-compose-stage .relational-chip-form {
+    grid-template-columns: minmax(0, 1fr) 56px;
+    gap: 6px;
+    margin-top: 7px;
+  }
+
+  .mobile-compose-stage .relational-add-button {
+    min-width: 0 !important;
+    padding-inline: 8px !important;
+  }
+
+  .mobile-compose-stage .prompt-chip-row,
+  .mobile-compose-stage .coach-chip-row {
+    gap: 6px !important;
+    margin-top: 8px;
+    max-height: 76px;
+    overflow-y: auto;
+  }
+
+  .mobile-compose-stage .prompt-chip,
+  .mobile-compose-stage .coach-chip {
+    height: 28px;
+    font-size: 12px !important;
+  }
+
+  .mobile-compose-stage .prompt-chip .MuiChip-label,
+  .mobile-compose-stage .coach-chip .MuiChip-label {
+    max-width: 150px;
+  }
+
+  .mobile-compose-stage .template-token-fields {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  .mobile-personalised-preview {
+    margin-top: 0;
+    padding: 10px;
+    max-height: 112px;
+    overflow-y: auto;
+  }
+
+  .mobile-compose-stage .personalisation-coach {
+    margin-top: 0;
+    padding-top: 10px;
+  }
+
+  .mobile-compose-stage .personalisation-coach-text {
+    font-size: 12px !important;
   }
 
   .mobile-native-composer {
@@ -2910,9 +3385,11 @@ body[data-theme="light"]
 
   .mobile-native-textarea textarea {
     height: auto !important;
-    min-height: 10.15em !important;
-    max-height: 14.5em !important;
+    min-height: 8.75em !important;
+    max-height: 13em !important;
     overflow-y: auto !important;
+    overflow-wrap: break-word !important;
+    white-space: pre-wrap !important;
   }
 
   .mobile-native-image {
@@ -2952,6 +3429,7 @@ body[data-theme="light"]
     grid-template-columns: minmax(112px, 0.58fr) minmax(0, 1fr);
     gap: 10px;
     align-items: stretch;
+    min-width: 0;
     padding-top: 2px;
   }
 
@@ -3031,6 +3509,12 @@ body[data-theme="light"]
     min-width: 0 !important;
     height: 100%;
     padding-inline: 10px !important;
+    font-size: 13px !important;
+    white-space: normal !important;
+  }
+
+  .mobile-compose-action-row .mobile-primary-button .MuiButton-startIcon {
+    margin-right: 4px !important;
   }
 
   .mobile-share-stage {

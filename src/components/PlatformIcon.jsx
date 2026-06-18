@@ -1,9 +1,13 @@
 import React from "react";
 import { SvgIcon } from "@mui/material";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
+import MusicNoteIcon from "@mui/icons-material/MusicNote";
 import PublicIcon from "@mui/icons-material/Public";
 import SmsIcon from "@mui/icons-material/Sms";
+import TelegramIcon from "@mui/icons-material/Telegram";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import XIcon from "@mui/icons-material/X";
 
@@ -37,6 +41,13 @@ export default function PlatformIcon({ platform, ...props }) {
       return <FacebookIcon {...props} />;
     case "instagram":
       return <InstagramIcon {...props} />;
+    case "telegram":
+      return <TelegramIcon {...props} />;
+    case "messenger":
+    case "dm":
+      return <ChatBubbleOutlineIcon {...props} />;
+    case "tiktok":
+      return <MusicNoteIcon {...props} />;
     case "twitter":
     case "x":
       return <XIcon {...props} />;
@@ -46,6 +57,8 @@ export default function PlatformIcon({ platform, ...props }) {
       return <BlueskyIcon {...props} />;
     case "sms":
       return <SmsIcon {...props} />;
+    case "copy":
+      return <ContentCopyIcon {...props} />;
     default:
       return <PublicIcon {...props} />;
   }

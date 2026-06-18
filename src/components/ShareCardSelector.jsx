@@ -4,28 +4,15 @@ import {
   ToggleButtonGroup,
 } from "@mui/material";
 import PlatformIcon from "./PlatformIcon";
-
-const platformOrder = [
-  "whatsapp",
-  "instagram",
-  "facebook",
-  "twitter",
-  "x",
-  "bluesky",
-  "signal",
-  "sms",
-];
+import { getRoutePlatformLabel, sortCardsForRoute } from "../config/shareRoutes";
 
 export default function ShareCardSelector({
   shareCards,
   selectedId,
   onSelect,
+  routeId,
 }) {
-  const orderedShareCards = [...shareCards].sort((a, b) => {
-    const aIndex = platformOrder.indexOf(a.platform);
-    const bIndex = platformOrder.indexOf(b.platform);
-    return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
-  });
+  const orderedShareCards = sortCardsForRoute(shareCards, routeId);
 
   return (
     <ToggleButtonGroup
@@ -39,12 +26,38 @@ export default function ShareCardSelector({
         <ToggleButton
           key={card.id}
           value={card.id}
-          aria-label={card.platformLabel}
-          title={card.platformLabel}
+          aria-label={getRoutePlatformLabel(card, routeId)}
+          title={getRoutePlatformLabel(card, routeId)}
           className="channel-card-option"
         >
           <PlatformIcon platform={card.platform} fontSize="small" />
-          <span className="channel-card-label">{card.platformLabel}</span>
+          <span className="channel-card-label">
+            {getRoutePlatformLabel(card, routeId)}
+          </span>
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
+  );
+}
+
+export function ShareRouteSelector({ routes, selectedId, onSelect }) {
+  return (
+    <ToggleButtonGroup
+      value={selectedId}
+      exclusive
+      onChange={(_, value) => value && onSelect(value)}
+      aria-label="Choose how you want to share"
+      className="route-card-grid"
+    >
+      {routes.map((route) => (
+        <ToggleButton
+          key={route.id}
+          value={route.id}
+          className="route-card-option"
+          aria-label={route.label}
+        >
+          <span className="route-card-title">{route.label}</span>
+          <span className="route-card-description">{route.description}</span>
         </ToggleButton>
       ))}
     </ToggleButtonGroup>

@@ -4,6 +4,8 @@ export function buildShareUrl(shareCard, text) {
   switch (shareCard.platform) {
     case "whatsapp":
       return `https://wa.me/?text=${encodedText}`;
+    case "telegram":
+      return `https://t.me/share/url?url=&text=${encodedText}`;
     case "twitter":
     case "x":
       return `https://x.com/intent/tweet?text=${encodedText}`;
@@ -22,8 +24,15 @@ export function platformHomeUrl(platform) {
       return "https://facebook.com/";
     case "instagram":
       return "https://instagram.com/";
+    case "telegram":
+      return "https://web.telegram.org/";
+    case "messenger":
+    case "dm":
+      return "https://www.messenger.com/";
     case "signal":
       return "https://signal.org/";
+    case "tiktok":
+      return "https://www.tiktok.com/";
     case "whatsapp":
       return "https://web.whatsapp.com/";
     case "twitter":
