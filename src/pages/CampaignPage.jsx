@@ -108,6 +108,12 @@ export default function CampaignPage() {
     }));
   }
 
+  function chooseNextSharingRoute(modeId) {
+    updateSharingMode(modeId);
+    setShareStep(2);
+    setMobileStep(0);
+  }
+
   return (
     <Container maxWidth="xl" className="page-shell campaign-task-page">
       {isMobileFlow ? (
@@ -121,6 +127,7 @@ export default function CampaignPage() {
           onSelectSharingMode={updateSharingMode}
           shareStep={shareStep}
           onShareStepChange={setShareStep}
+          onChooseNextRoute={chooseNextSharingRoute}
           mobileStep={mobileStep}
           onMobileStepChange={setMobileStep}
           channelSelector={
@@ -138,11 +145,13 @@ export default function CampaignPage() {
             shareCard={selectedCard}
             editedText={editedText}
             onEditedTextChange={updateEditedText}
+            campaign={campaign}
             sharingModes={sharingModes}
             selectedSharingMode={selectedSharingMode}
             onSelectSharingMode={updateSharingMode}
             shareStep={shareStep}
             onShareStepChange={setShareStep}
+            onChooseNextRoute={chooseNextSharingRoute}
             channelSelector={
               <ShareCardSelector
                 shareCards={modeCards}

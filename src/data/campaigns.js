@@ -25,7 +25,8 @@ export const campaigns = [
         imageUrl: "/tenant_wins_after_rent_strike.png",
         requiresImage: false,
         shareMode: "direct",
-        recommendedUse: "Send to friends, neighbours, members, or tenants with repair issues.",
+        recommendedUse:
+          "Send to friends, neighbours, members, or tenants with repair issues.",
       },
       {
         id: "tenant-win-facebook",
@@ -103,6 +104,28 @@ export const campaigns = [
         recommendedUse: "Use for quick one-to-one sharing.",
       },
     ],
+    boostContent: {
+      enabled: true,
+      platform: "instagram",
+      contentType: "post",
+      url: "https://www.instagram.com/p/DPPWiyTjKxV/",
+      title: "Boost the original Living Rent post",
+      description:
+        "Living Rent has also posted this story. A real comment, share, save, or Story helps more people see it.",
+      actions: [
+        "Open the Instagram post.",
+        "Like or save it if you can.",
+        "Leave a real comment in your own words.",
+        "Share it to your Story if appropriate.",
+        "Send it by DM to one person or group who might care.",
+      ],
+      commentStarters: [
+        "Huge respect to everyone who organised this.",
+        "This is why tenants need power, not just promises.",
+        "We have seen the same problem locally.",
+        "If you rent, this is worth reading and sharing.",
+      ],
+    },
   },
   {
     id: "rent-freeze-msps",
@@ -130,7 +153,8 @@ export const campaigns = [
         imageUrl: "/freeze_rents_now_contact_your_msps.png",
         requiresImage: false,
         shareMode: "direct",
-        recommendedUse: "Use for direct asks to friends, family, neighbours, or members.",
+        recommendedUse:
+          "Use for direct asks to friends, family, neighbours, or members.",
       },
       {
         id: "rent-freeze-facebook",
@@ -250,7 +274,8 @@ export const campaigns = [
         imageUrl: "/leith_branch_agm_poster_illustration.png",
         requiresImage: false,
         shareMode: "direct",
-        recommendedUse: "Use for direct asks to members, neighbours, and supporters.",
+        recommendedUse:
+          "Use for direct asks to members, neighbours, and supporters.",
       },
       {
         id: "agm-facebook",

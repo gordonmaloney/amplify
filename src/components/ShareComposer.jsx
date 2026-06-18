@@ -24,6 +24,7 @@ import ShareFlowStep from "./ShareFlowStep";
 import { copyToClipboard } from "../utils/clipboard";
 import { downloadImage } from "../utils/downloads";
 import { buildShareUrl, platformHomeUrl } from "../utils/shareLinks";
+import { boostGuidance, defaultCommentStarters } from "../config/boostGuidance";
 import { getMessageTitle, SHARING_MODE_IDS } from "../config/shareModes";
 
 export default function ShareComposer({
@@ -35,6 +36,7 @@ export default function ShareComposer({
   onSelectSharingMode,
   shareStep,
   onShareStepChange,
+  onChooseNextRoute,
   channelSelector,
   campaign,
   mobileStep,
@@ -51,10 +53,10 @@ export default function ShareComposer({
   const selectedModeId = selectedSharingMode?.id || SHARING_MODE_IDS.askDirectly;
   const messageTitle = getMessageTitle(shareCard.platform, selectedModeId);
   const isMobile = campaign && typeof mobileStep === "number";
-  const isFinalMobileShareStep = isMobile && mobileStep === 1;
+  const isMobileShareFlowStage = isMobile && mobileStep > 0;
 
   useEffect(() => {
-    if (!isMobile || shareStep !== 2 || isFinalMobileShareStep) return undefined;
+    if (!isMobile || shareStep !== 2 || isMobileShareFlowStage) return undefined;
 
     const scrollId = window.setTimeout(() => {
       stepTwoMessageRef.current?.scrollIntoView({
@@ -64,7 +66,7 @@ export default function ShareComposer({
     }, 80);
 
     return () => window.clearTimeout(scrollId);
-  }, [isFinalMobileShareStep, isMobile, shareStep, selectedModeId]);
+  }, [isMobileShareFlowStage, isMobile, shareStep, selectedModeId]);
 
   async function handlePrimaryShare() {
     const shouldPrepareClipboard = !shareUrl || shouldShareImage;
@@ -87,7 +89,7 @@ export default function ShareComposer({
     handlePrimaryShare();
   }
 
-  if (isFinalMobileShareStep) {
+  if (isMobileShareFlowStage) {
     return (
       <MobileShareFlow
         campaign={campaign}
@@ -272,6 +274,9 @@ export default function ShareComposer({
         editedText={editedText}
         shareUrl={shareUrl}
         initialCopyStatus={initialCopyStatus}
+        campaign={campaign}
+        completedRoute={selectedModeId}
+        onChooseNextRoute={onChooseNextRoute}
       />
     </Paper>
   );
@@ -368,14 +373,25 @@ function MobileShareFlow({
   const [downloadStatus, setDownloadStatus] = useState("waiting");
   const [activeShareStep, setActiveShareStep] = useState(0);
   const [copyToastId, setCopyToastId] = useState(0);
+  const [copiedBoostCommentIndex, setCopiedBoostCommentIndex] = useState(null);
   const [platformMenuAnchor, setPlatformMenuAnchor] = useState(null);
+  const mobileBoostTimerRef = useRef(null);
   const copyFailed = copyStatus === "failed";
   const hasOnlyOpenStep = !shouldCopyText && !shouldShareImage;
   const platformMenuOpen = Boolean(platformMenuAnchor);
+  const boostStage = getMobileBoostStage(campaign?.boostContent);
 
   useEffect(() => {
     setPlatformMenuAnchor(null);
   }, [shareCard.id]);
+
+  useEffect(() => {
+    return () => {
+      if (mobileBoostTimerRef.current) {
+        window.clearTimeout(mobileBoostTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (mobileStep !== 1) return undefined;
@@ -436,6 +452,22 @@ function MobileShareFlow({
     setDownloadStatus("running");
     const downloaded = await downloadImage(shareCard.imageUrl);
     setDownloadStatus(downloaded ? "done" : "failed");
+  }
+
+  function scheduleMobileBoostStage() {
+    if (!boostStage) return;
+    if (mobileBoostTimerRef.current) {
+      window.clearTimeout(mobileBoostTimerRef.current);
+    }
+    mobileBoostTimerRef.current = window.setTimeout(() => {
+      onMobileStepChange(2);
+      mobileBoostTimerRef.current = null;
+    }, 2500);
+  }
+
+  async function copyBoostComment(comment, index) {
+    const copied = await copyToClipboard(comment);
+    if (copied) setCopiedBoostCommentIndex(index);
   }
 
   const flowSteps = [];
@@ -624,6 +656,7 @@ function MobileShareFlow({
                   underline="none"
                   variant="contained"
                   startIcon={<OpenInNewIcon />}
+                  onClick={scheduleMobileBoostStage}
                   className="mobile-primary-button"
                 >
                   Open {channelLabel}{hasOnlyOpenStep ? " now" : ""}
@@ -646,6 +679,105 @@ function MobileShareFlow({
             <Button onClick={() => onMobileStepChange(0)}>
               Back to edit message
             </Button>
+          </Stack>
+        </Paper>
+      )}
+
+      {mobileStep === 2 && boostStage && (
+        <Paper variant="outlined" className="mobile-stage-card mobile-boost-stage">
+          <Stack spacing={1.5}>
+            <Box>
+              <Typography className="mobile-stage-kicker">Boost content</Typography>
+              <Typography variant="h1" className="mobile-boost-title">
+                {boostStage.title}
+              </Typography>
+              <Typography className="mobile-boost-copy">
+                {boostStage.description}
+              </Typography>
+            </Box>
+
+            <Box className="mobile-boost-original-card">
+              <Box className="share-flow-original-post-icon">
+                <PlatformIcon platform={boostStage.platform} fontSize="small" />
+              </Box>
+              <Stack spacing={1}>
+                <Stack
+                  direction="row"
+                  flexWrap="wrap"
+                  gap={0.75}
+                  className="share-flow-boost-meta-row"
+                >
+                  <Box component="span">{boostStage.platformLabel}</Box>
+                  <Box component="span">{boostStage.contentTypeLabel}</Box>
+                </Stack>
+                <Typography className="mobile-boost-original-title">
+                  Original post
+                </Typography>
+                <Typography className="share-flow-boost-url">
+                  {boostStage.url}
+                </Typography>
+              </Stack>
+            </Box>
+
+            <Box className="mobile-boost-section">
+              <Typography className="share-flow-recovery-title">
+                What helps most
+              </Typography>
+              <Box component="ol" className="share-flow-boost-checklist">
+                {boostStage.actions.map((action) => (
+                  <li key={action}>{action}</li>
+                ))}
+              </Box>
+              <Typography className="share-flow-boost-tip">
+                Real comments, shares, saves and DMs are more useful than
+                silent views.
+              </Typography>
+            </Box>
+
+            <Box className="mobile-boost-section">
+              <Typography className="share-flow-recovery-title">
+                Comment starters
+              </Typography>
+              <Typography className="share-flow-boost-helper">
+                Pick one, then change a few words so it sounds like you.
+              </Typography>
+              <Stack spacing={0.75} className="share-flow-comment-starters">
+                {boostStage.commentStarters.map((comment, index) => (
+                  <Box key={comment} className="share-flow-comment-starter">
+                    <Typography>{comment}</Typography>
+                    <Button
+                      size="small"
+                      onClick={() => copyBoostComment(comment, index)}
+                      className="share-flow-recovery-action"
+                    >
+                      {copiedBoostCommentIndex === index ? "Copied" : "Copy"}
+                    </Button>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+
+            <Box className="mobile-boost-actions">
+              <Button
+                type="button"
+                onClick={() => onMobileStepChange(1)}
+                className="share-flow-secondary-action"
+              >
+                Back
+              </Button>
+              <Button
+                variant="contained"
+                component={Link}
+                href={boostStage.url}
+                target="_blank"
+                rel="noopener"
+                underline="none"
+                startIcon={<OpenInNewIcon />}
+                className="mobile-primary-button"
+              >
+                Open original post
+              </Button>
+            </Box>
           </Stack>
         </Paper>
       )}
@@ -722,6 +854,67 @@ function getMobileFinalInstruction({
   }
 
   return `Paste your text, then post.`;
+}
+
+function getMobileBoostStage(boostContent) {
+  if (!boostContent?.enabled || !boostContent?.url) return null;
+
+  const platform = normaliseBoostPlatform(boostContent.platform);
+  const contentType = boostContent.contentType?.toLowerCase() || "post";
+  const guidance =
+    boostGuidance[platform]?.[contentType] ||
+    boostGuidance[platform]?.post ||
+    boostGuidance.generic.post;
+
+  return {
+    platform,
+    title: boostContent.title || guidance.title || "Boost the original post",
+    description:
+      boostContent.description ||
+      "Help the original post travel further. Real comments and shares from real people can help more people see it.",
+    platformLabel: getBoostPlatformLabel(platform),
+    contentTypeLabel: toTitleCase(contentType),
+    url: boostContent.url,
+    actions:
+      Array.isArray(boostContent.actions) && boostContent.actions.length > 0
+        ? boostContent.actions
+        : guidance.actions,
+    commentStarters:
+      Array.isArray(boostContent.commentStarters) &&
+      boostContent.commentStarters.length > 0
+        ? boostContent.commentStarters
+        : [
+            defaultCommentStarters.supportive,
+            defaultCommentStarters.political,
+            defaultCommentStarters.personal,
+            "If you rent, this is worth reading and sharing.",
+          ],
+  };
+}
+
+function normaliseBoostPlatform(platform = "") {
+  const value = platform.toLowerCase();
+  if (value === "twitter") return "x";
+  return boostGuidance[value] ? value : "generic";
+}
+
+function getBoostPlatformLabel(platform) {
+  const labels = {
+    instagram: "Instagram",
+    facebook: "Facebook",
+    x: "X",
+    bluesky: "Bluesky",
+    tiktok: "TikTok",
+    generic: "Original platform",
+  };
+
+  return labels[platform] || toTitleCase(platform);
+}
+
+function toTitleCase(value = "") {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export function SharePreviewPanel({ shareCard, editedText }) {
