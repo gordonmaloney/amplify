@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Box } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import Header from "./Header";
+import { CampaignStoreProvider } from "./context/CampaignStoreContext";
 import AdminPlaceholder from "./pages/AdminPlaceholder";
 import CampaignPage from "./pages/CampaignPage";
 import CreatePlaceholder from "./pages/CreatePlaceholder";
@@ -122,29 +123,31 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <BrowserRouter>
-        <div className="app-container" data-theme={mode}>
-          <Header
-            mode={mode}
-            onToggleMode={() =>
-              setMode((currentMode) =>
-                currentMode === "dark" ? "light" : "dark"
-              )
-            }
-          />
-          <Box className="main-content">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/act/:campaignSlug" element={<CampaignPage />} />
-              <Route path="/admin" element={<AdminPlaceholder />} />
-              <Route path="/create" element={<CreatePlaceholder />} />
-              <Route
-                path="/campaign"
-                element={<Navigate to="/act/tenant-win-rent-strike" replace />}
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Box>
-        </div>
+        <CampaignStoreProvider>
+          <div className="app-container" data-theme={mode}>
+            <Header
+              mode={mode}
+              onToggleMode={() =>
+                setMode((currentMode) =>
+                  currentMode === "dark" ? "light" : "dark"
+                )
+              }
+            />
+            <Box className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/act/:campaignSlug" element={<CampaignPage />} />
+                <Route path="/admin" element={<AdminPlaceholder />} />
+                <Route path="/create" element={<CreatePlaceholder />} />
+                <Route
+                  path="/campaign"
+                  element={<Navigate to="/act/tenant-win-rent-strike" replace />}
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Box>
+          </div>
+        </CampaignStoreProvider>
       </BrowserRouter>
     </ThemeProvider>
   );

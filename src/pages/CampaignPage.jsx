@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -20,10 +20,14 @@ import {
   getSharingMode,
   sharingModes,
 } from "../config/shareModes";
-import { getCampaignBySlug } from "../data/campaigns";
+import { useCampaignStore } from "../context/useCampaignStore";
+import { canUseNativeShare } from "../utils/nativeShare";
+
+const SHARING_MODE_TRANSITION_MS = 520;
 
 export default function CampaignPage() {
   const { campaignSlug } = useParams();
+  const { getCampaignBySlug } = useCampaignStore();
   const campaign = getCampaignBySlug(campaignSlug);
   const [selectedCardId, setSelectedCardId] = useState(
     campaign?.shareCards[0]?.id || ""
@@ -34,6 +38,9 @@ export default function CampaignPage() {
   const [shareStep, setShareStep] = useState(1);
   const isMobileFlow = useMediaQuery("(max-width:700px)");
   const [mobileStep, setMobileStep] = useState(0);
+  const [supportsNativeShare, setSupportsNativeShare] = useState(false);
+  const [sharingModeTransition, setSharingModeTransition] = useState(null);
+  const sharingModeTransitionRef = useRef(null);
 
   const initialEditedText = useMemo(() => {
     if (!campaign) return {};
@@ -46,6 +53,10 @@ export default function CampaignPage() {
 
   useEffect(() => {
     if (!campaign) return;
+    if (sharingModeTransitionRef.current) {
+      window.clearTimeout(sharingModeTransitionRef.current);
+      sharingModeTransitionRef.current = null;
+    }
     const defaultModeId = getDefaultSharingModeId();
     const modeCards = getCardsForSharingMode(campaign.shareCards, defaultModeId);
     setSelectedSharingModeId(defaultModeId);
@@ -53,7 +64,20 @@ export default function CampaignPage() {
     setShareStep(1);
     setEditedTextByCard(initialEditedText);
     setMobileStep(0);
+    setSharingModeTransition(null);
   }, [campaign, initialEditedText]);
+
+  useEffect(() => {
+    return () => {
+      if (sharingModeTransitionRef.current) {
+        window.clearTimeout(sharingModeTransitionRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setSupportsNativeShare(isMobileFlow && canUseNativeShare());
+  }, [isMobileFlow]);
 
   if (!campaign) {
     return (
@@ -81,9 +105,11 @@ export default function CampaignPage() {
   }
 
   const selectedSharingMode = getSharingMode(selectedSharingModeId);
+  const cardOptions = { preferNativeShare: isMobileFlow && supportsNativeShare };
   const modeCards = getCardsForSharingMode(
     campaign.shareCards,
-    selectedSharingMode.id
+    selectedSharingMode.id,
+    cardOptions
   );
   const selectedCard =
     modeCards.find((card) => card.id === selectedCardId) ||
@@ -94,11 +120,39 @@ export default function CampaignPage() {
 
   function updateSharingMode(modeId) {
     const nextMode = getSharingMode(modeId);
-    const nextModeCards = getCardsForSharingMode(campaign.shareCards, nextMode.id);
+    const nextModeCards = getCardsForSharingMode(
+      campaign.shareCards,
+      nextMode.id,
+      cardOptions
+    );
     setSelectedSharingModeId(nextMode.id);
     if (!nextModeCards.some((card) => card.id === selectedCardId)) {
       setSelectedCardId(nextModeCards[0]?.id || campaign.shareCards[0]?.id || "");
     }
+  }
+
+  function transitionSharingMode(modeId, { advanceToStepTwo = false } = {}) {
+    const nextMode = getSharingMode(modeId);
+    if (!nextMode || sharingModeTransition?.modeId === nextMode.id) return;
+
+    if (sharingModeTransitionRef.current) {
+      window.clearTimeout(sharingModeTransitionRef.current);
+    }
+
+    setSharingModeTransition({
+      modeId: nextMode.id,
+      label: nextMode.label,
+    });
+
+    sharingModeTransitionRef.current = window.setTimeout(() => {
+      updateSharingMode(nextMode.id);
+      if (advanceToStepTwo) {
+        setShareStep(2);
+      }
+      setMobileStep(0);
+      setSharingModeTransition(null);
+      sharingModeTransitionRef.current = null;
+    }, SHARING_MODE_TRANSITION_MS);
   }
 
   function updateEditedText(value) {
@@ -109,9 +163,7 @@ export default function CampaignPage() {
   }
 
   function chooseNextSharingRoute(modeId) {
-    updateSharingMode(modeId);
-    setShareStep(2);
-    setMobileStep(0);
+    transitionSharingMode(modeId, { advanceToStepTwo: true });
   }
 
   return (
@@ -125,6 +177,8 @@ export default function CampaignPage() {
           sharingModes={sharingModes}
           selectedSharingMode={selectedSharingMode}
           onSelectSharingMode={updateSharingMode}
+          onSwitchSharingMode={transitionSharingMode}
+          sharingModeTransition={sharingModeTransition}
           shareStep={shareStep}
           onShareStepChange={setShareStep}
           onChooseNextRoute={chooseNextSharingRoute}
@@ -149,6 +203,8 @@ export default function CampaignPage() {
             sharingModes={sharingModes}
             selectedSharingMode={selectedSharingMode}
             onSelectSharingMode={updateSharingMode}
+            onSwitchSharingMode={transitionSharingMode}
+            sharingModeTransition={sharingModeTransition}
             shareStep={shareStep}
             onShareStepChange={setShareStep}
             onChooseNextRoute={chooseNextSharingRoute}

@@ -23,6 +23,11 @@ import ShareFlowModal from "./ShareFlowModal";
 import ShareFlowStep from "./ShareFlowStep";
 import { copyToClipboard } from "../utils/clipboard";
 import { downloadImage } from "../utils/downloads";
+import {
+  buildNativeShareData,
+  canUseNativeShare,
+  isNativeShareAbort,
+} from "../utils/nativeShare";
 import { buildShareUrl, platformHomeUrl } from "../utils/shareLinks";
 import { boostGuidance, defaultCommentStarters } from "../config/boostGuidance";
 import { getMessageTitle, SHARING_MODE_IDS } from "../config/shareModes";
@@ -34,6 +39,8 @@ export default function ShareComposer({
   sharingModes = [],
   selectedSharingMode,
   onSelectSharingMode,
+  onSwitchSharingMode,
+  sharingModeTransition,
   shareStep,
   onShareStepChange,
   onChooseNextRoute,
@@ -52,8 +59,11 @@ export default function ShareComposer({
   const shouldShareImage = Boolean(shareCard.imageUrl && shareCard.requiresImage);
   const selectedModeId = selectedSharingMode?.id || SHARING_MODE_IDS.askDirectly;
   const messageTitle = getMessageTitle(shareCard.platform, selectedModeId);
+  const isCopyOnly = shareCard.platform === "copy";
+  const isNativeShareOnly = shareCard.platform === "native_share";
   const isMobile = campaign && typeof mobileStep === "number";
   const isMobileShareFlowStage = isMobile && mobileStep > 0;
+  const isSharingModeTransitioning = Boolean(sharingModeTransition);
 
   useEffect(() => {
     if (!isMobile || shareStep !== 2 || isMobileShareFlowStage) return undefined;
@@ -81,12 +91,41 @@ export default function ShareComposer({
   }
 
   function handlePrimaryAction() {
+    if (isMobile && isNativeShareOnly) {
+      handleNativeShareAction();
+      return;
+    }
+
     if (isMobile && onMobileStepChange) {
       onMobileStepChange(1);
       return;
     }
 
     handlePrimaryShare();
+  }
+
+  async function handleNativeShareAction() {
+    if (!canUseNativeShare()) {
+      onMobileStepChange?.(1);
+      return;
+    }
+
+    try {
+      await navigator.share(
+        buildNativeShareData({
+          title: campaign?.title || shareCard.title,
+          text: editedText,
+          url: shareCard.urlToShare || campaign?.primaryUrl,
+        })
+      );
+
+      if (campaign?.boostContent?.enabled) {
+        window.setTimeout(() => onMobileStepChange?.(2), 900);
+      }
+    } catch (error) {
+      if (isNativeShareAbort(error)) return;
+      onMobileStepChange?.(1);
+    }
   }
 
   if (isMobileShareFlowStage) {
@@ -148,9 +187,14 @@ export default function ShareComposer({
                   <Button
                     key={mode.id}
                     type="button"
-                    onClick={() => onSelectSharingMode(mode.id)}
+                    onClick={() => {
+                      if (mode.id !== selectedModeId) {
+                        onSwitchSharingMode?.(mode.id);
+                      }
+                    }}
                     className="sharing-mode-switch"
                     data-selected={mode.id === selectedModeId}
+                    disabled={isSharingModeTransitioning}
                   >
                     {mode.id === selectedModeId
                       ? mode.label
@@ -170,69 +214,88 @@ export default function ShareComposer({
               Where are you sharing it?
             </Typography>
             <Box
-              className="message-workspace two-step-message-workspace"
-              ref={stepTwoMessageRef}
+              className="share-step-workspace-frame"
+              data-transitioning={isSharingModeTransitioning}
             >
-              <Box className="share-to-row">{channelSelector}</Box>
+              <Box
+                className="message-workspace two-step-message-workspace"
+                ref={stepTwoMessageRef}
+              >
+                <Box className="share-to-row">{channelSelector}</Box>
 
-              <Box className="message-tab-body">
-                <Box className="message-editor-section">
-                  <Box
-                    className={`desktop-template-card${
-                      shouldShareImage ? " desktop-template-card-with-image" : ""
-                    }`}
-                  >
-                    <Box className="message-editor-wrap">
-                      <Box className="message-title-strip">
-                        <Typography className="desktop-post-title">
-                          {messageTitle}
-                        </Typography>
-                        <Typography className="desktop-post-subtitle">
-                          Prepared for {shareCard.platformLabel}
-                        </Typography>
+                <Box className="message-tab-body">
+                  <Box className="message-editor-section">
+                    <Box
+                      className={`desktop-template-card${
+                        shouldShareImage ? " desktop-template-card-with-image" : ""
+                      }`}
+                    >
+                      <Box className="message-editor-wrap">
+                        <Box className="message-title-strip">
+                          <Typography className="desktop-post-title">
+                            {messageTitle}
+                          </Typography>
+                          <Typography className="desktop-post-subtitle">
+                            {isCopyOnly
+                              ? "Ready to copy and paste yourself"
+                              : isNativeShareOnly
+                                ? "Ready for your phone share sheet"
+                              : `Prepared for ${shareCard.platformLabel}`}
+                          </Typography>
+                        </Box>
+                        <TextField
+                          id="share-message"
+                          value={editedText}
+                          onChange={(event) =>
+                            onEditedTextChange(event.target.value)
+                          }
+                          multiline
+                          minRows={5}
+                          fullWidth
+                          inputProps={{
+                            "aria-label": "Edit your campaign message",
+                          }}
+                          className="message-textarea"
+                        />
+                        {characterLimit && (
+                          <Typography
+                            className="character-count"
+                            data-over-limit={characterCount > characterLimit}
+                            aria-live="polite"
+                          >
+                            {characterCount} / {characterLimit}
+                          </Typography>
+                        )}
                       </Box>
-                      <TextField
-                        id="share-message"
-                        value={editedText}
-                        onChange={(event) => onEditedTextChange(event.target.value)}
-                        multiline
-                        minRows={5}
-                        fullWidth
-                        inputProps={{ "aria-label": "Edit your campaign message" }}
-                        className="message-textarea"
-                      />
-                      {characterLimit && (
-                        <Typography
-                          className="character-count"
-                          data-over-limit={characterCount > characterLimit}
-                          aria-live="polite"
-                        >
-                          {characterCount} / {characterLimit}
-                        </Typography>
+                      {shouldShareImage && (
+                        <Box className="desktop-template-attachment">
+                          <Box
+                            component="img"
+                            src={shareCard.imageUrl}
+                            alt=""
+                            className="desktop-template-image"
+                          />
+                          <Stack
+                            spacing={0.25}
+                            className="desktop-template-image-copy"
+                          >
+                            <Typography className="image-share-title">
+                              Suggested campaign image
+                            </Typography>
+                            <Typography>
+                              Attach this image in the send step if you want the
+                              post to stand out.
+                            </Typography>
+                          </Stack>
+                        </Box>
                       )}
                     </Box>
-                    {shouldShareImage && (
-                      <Box className="desktop-template-attachment">
-                        <Box
-                          component="img"
-                          src={shareCard.imageUrl}
-                          alt=""
-                          className="desktop-template-image"
-                        />
-                        <Stack spacing={0.25} className="desktop-template-image-copy">
-                          <Typography className="image-share-title">
-                            Suggested campaign image
-                          </Typography>
-                          <Typography>
-                            Attach this image in the send step if you want the
-                            post to stand out.
-                          </Typography>
-                        </Stack>
-                      </Box>
-                    )}
                   </Box>
                 </Box>
               </Box>
+              {isSharingModeTransitioning && (
+                <SharingModeTransitionCue label={sharingModeTransition.label} />
+              )}
             </Box>
 
             <Stack
@@ -251,11 +314,29 @@ export default function ShareComposer({
               </Button>
               <Button
                 variant="contained"
-                startIcon={<SendIcon />}
+                startIcon={
+                  isCopyOnly ? (
+                    <ContentCopyIcon />
+                  ) : isNativeShareOnly ? (
+                    <PlatformIcon platform="native_share" />
+                  ) : (
+                    <SendIcon />
+                  )
+                }
                 onClick={handlePrimaryAction}
                 className="primary-share-button"
               >
-                {isMobile ? "Preview and share" : `Share on ${shareCard.platformLabel}`}
+                {isMobile
+                  ? isCopyOnly
+                    ? "Preview and copy"
+                    : isNativeShareOnly
+                      ? "Open share sheet"
+                      : "Preview and share"
+                  : isCopyOnly
+                    ? "Copy message"
+                    : isNativeShareOnly
+                      ? "Open share sheet"
+                    : `Share on ${shareCard.platformLabel}`}
               </Button>
             </Stack>
 
@@ -291,6 +372,24 @@ export default function ShareComposer({
   }
 
   return composerCard;
+}
+
+function SharingModeTransitionCue({ label }) {
+  return (
+    <Box className="sharing-mode-transition" role="status" aria-live="polite">
+      <Box>
+        <Typography className="sharing-mode-transition-kicker">
+          Changing sharing mode
+        </Typography>
+        <Typography className="sharing-mode-transition-label">
+          Loading {label}
+        </Typography>
+      </Box>
+      <Box className="sharing-mode-transition-track" aria-hidden="true">
+        <Box className="sharing-mode-transition-progress" />
+      </Box>
+    </Box>
+  );
 }
 
 function ShareModeStep({
@@ -366,8 +465,13 @@ function MobileShareFlow({
   characterLimit,
   shouldShareImage,
 }) {
-  const preparedShareUrl = shareUrl || platformHomeUrl(shareCard.platform);
-  const canOpenPreparedShare = Boolean(shareUrl);
+  const isCopyOnly = shareCard.platform === "copy";
+  const isNativeShareOnly = shareCard.platform === "native_share";
+  const isManualFallback = isCopyOnly || isNativeShareOnly;
+  const preparedShareUrl = isManualFallback
+    ? null
+    : shareUrl || platformHomeUrl(shareCard.platform);
+  const canOpenPreparedShare = !isManualFallback && Boolean(shareUrl);
   const shouldCopyText = !canOpenPreparedShare || shouldShareImage;
   const [copyStatus, setCopyStatus] = useState("waiting");
   const [downloadStatus, setDownloadStatus] = useState("waiting");
@@ -477,15 +581,23 @@ function MobileShareFlow({
       status: copyStatus,
       icon: <ContentCopyIcon />,
       title:
-        copyStatus === "done"
-          ? "Your template has been copied"
+        isManualFallback && copyStatus === "done"
+          ? "Your message has been copied"
+          : copyStatus === "done"
+            ? "Your template has been copied"
           : copyStatus === "failed"
             ? "Copying needs a hand"
-            : "Copying your template",
+            : isManualFallback
+              ? "Copying your message"
+              : "Copying your template",
       body:
         copyStatus === "failed"
           ? "Copy it manually below."
-          : "Ready to paste when you post.",
+          : isNativeShareOnly
+            ? "The share sheet did not open, so your message is copied instead."
+          : isCopyOnly
+            ? "Paste it wherever you want to send it."
+            : "Ready to paste when you post.",
       actionLabel: "Copy text",
       actionPrefix: "Didn't work?",
       onAction: copyAgain,
@@ -521,11 +633,12 @@ function MobileShareFlow({
     key: "open",
     status: "ready",
     icon: <OpenInNewIcon />,
-    title: `Now open ${channelLabel}`,
+    title: isManualFallback ? "Now send it yourself" : `Now open ${channelLabel}`,
     body: getMobileFinalInstruction({
       canOpenPreparedShare,
       copyFailed,
       needsManualImage: shouldShareImage,
+      platform: shareCard.platform,
       platformLabel: channelLabel,
       shouldCopyText,
     }),
@@ -602,11 +715,11 @@ function MobileShareFlow({
                 </Popover>
                 <Button
                   variant="contained"
-                  startIcon={<SendIcon />}
+                  startIcon={isManualFallback ? <ContentCopyIcon /> : <SendIcon />}
                   onClick={() => onMobileStepChange(1)}
                   className="mobile-primary-button"
                 >
-                  Preview and share
+                  {isCopyOnly ? "Preview and copy" : "Preview and share"}
                 </Button>
               </Box>
             </Stack>
@@ -621,16 +734,24 @@ function MobileShareFlow({
               <PlatformIcon platform={shareCard.platform} fontSize="small" />
               <Box>
                 <Typography className="mobile-native-title">
-                  Share on {channelLabel}
+                  {isManualFallback ? "Copy message" : `Share on ${channelLabel}`}
                 </Typography>
                 <Typography className="mobile-native-subtitle">
-                  Finish inside {channelLabel}
+                  {isNativeShareOnly
+                    ? "Share sheet fallback"
+                    : isCopyOnly
+                      ? "Paste it wherever you want"
+                    : `Finish inside ${channelLabel}`}
                 </Typography>
               </Box>
             </Box>
             <Stack spacing={1} className="mobile-share-instructions">
               <Typography>
-                {shouldCopyText || shouldShareImage
+                {isNativeShareOnly
+                  ? "The share sheet did not open. Copy the message, then paste it wherever you want to send it."
+                  : isCopyOnly
+                    ? "Copy the message, then paste it wherever you want to send it."
+                  : shouldCopyText || shouldShareImage
                   ? `Getting your post ready for ${channelLabel}.`
                   : `Open ${channelLabel}, check it, then send.`}
               </Typography>
@@ -836,9 +957,16 @@ function getMobileFinalInstruction({
   canOpenPreparedShare,
   copyFailed,
   needsManualImage,
+  platform,
   platformLabel,
   shouldCopyText,
 }) {
+  if (platform === "copy" || platform === "native_share") {
+    return copyFailed
+      ? "Copy the message manually, then paste it wherever you want to send it."
+      : "Your message is copied. Paste it into the app, group, feed, email or message thread you want to use.";
+  }
+
   if (canOpenPreparedShare && !needsManualImage && !shouldCopyText) {
     return `Open ${platformLabel}, check it, then send.`;
   }

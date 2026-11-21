@@ -4,7 +4,16 @@ export function getFinalInstruction({
   needsManualImage,
   platformLabel,
   shouldCopyText,
+  platform,
 }) {
+  if (platform === "copy" || platform === "native_share") {
+    if (copyFailed) {
+      return "Copy the message manually, then paste it wherever you want to send it.";
+    }
+
+    return "Your message is copied. Paste it into the app, group, feed, email or message thread you want to use.";
+  }
+
   if (canOpenPreparedShare && !needsManualImage && !shouldCopyText) {
     return `Open ${platformLabel} with your message already prepared, review it, and send it when you are happy.`;
   }

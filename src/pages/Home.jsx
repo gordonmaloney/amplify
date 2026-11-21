@@ -2,39 +2,41 @@ import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
-  Chip,
   Container,
   IconButton,
   Paper,
   Stack,
   Typography,
 } from "@mui/material";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import BuildIcon from "@mui/icons-material/Build";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { Link as RouterLink } from "react-router-dom";
-import { campaigns } from "../data/campaigns";
+import { useCampaignStore } from "../context/useCampaignStore";
 
 const useCases = [
   {
-    title: "Mobilise people",
+    title: "Mobilise members",
     copy:
-      "Turn supporters out for protests, direct actions, meetings, canvasses, branch AGMs, and other moments where showing up matters.",
+      "Help members bring friends, neighbours, workmates and family into the room for meetings, events and action.",
   },
   {
-    title: "Drive action",
+    title: "Build pressure",
     copy:
-      "Get people to sign, email, register, donate, join, or take another concrete step that builds pressure.",
+      "Turn support into collective action by giving members a clear ask to share with people they know.",
   },
   {
-    title: "Amplify a story",
+    title: "Celebrate our power",
     copy:
-      "Help a victory, announcement, position, or piece of content travel through trusted relationships instead of platform luck.",
+      "Celebrate victories, tell the story of the campaign and show what organised tenants can achieve together.",
   },
 ];
 
 export default function Home() {
+  const { campaigns } = useCampaignStore();
+  const liveCampaigns = campaigns.filter(
+    (campaign) => campaign.status === "active"
+  );
   const [activeCampaignIndex, setActiveCampaignIndex] = useState(0);
   const [carouselTransition, setCarouselTransition] = useState({
     direction: 0,
@@ -44,7 +46,7 @@ export default function Home() {
   const swipeStartXRef = useRef(null);
   const carouselFrameRef = useRef(null);
   const carouselTimeoutRef = useRef(null);
-  const hasMultipleCampaigns = campaigns.length > 1;
+  const hasMultipleCampaigns = liveCampaigns.length > 1;
   const displayedCampaignIndex =
     carouselTransition.targetIndex ?? activeCampaignIndex;
 
@@ -59,12 +61,17 @@ export default function Home() {
     };
   }, []);
 
-  function normalizeCampaignIndex(index) {
-    return (index + campaigns.length) % campaigns.length;
-  }
+  useEffect(() => {
+    if (
+      liveCampaigns.length > 0 &&
+      activeCampaignIndex >= liveCampaigns.length
+    ) {
+      setActiveCampaignIndex(0);
+    }
+  }, [activeCampaignIndex, liveCampaigns.length]);
 
-  function getCampaignFromIndex(index, offset = 0) {
-    return campaigns[normalizeCampaignIndex(index + offset)];
+  function normalizeCampaignIndex(index) {
+    return (index + liveCampaigns.length) % liveCampaigns.length;
   }
 
   function moveCampaign(direction) {
@@ -182,177 +189,163 @@ export default function Home() {
     ];
   }
 
+  function renderCampaignCarousel() {
+    if (liveCampaigns.length === 0) {
+      return (
+        <Stack spacing={1.5} className="home-hero-campaigns">
+          <Typography variant="h2" className="section-heading">
+            Live campaigns
+          </Typography>
+          <Typography color="text.secondary">
+            There are no live campaigns just now.
+          </Typography>
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack spacing={1.5} className="home-hero-campaigns">
+        <Box className="campaign-section-heading">
+          <Typography variant="h2" className="section-heading">
+            Live campaigns
+          </Typography>
+          <Stack direction="row" spacing={1} className="campaign-carousel-controls">
+            <IconButton
+              type="button"
+              aria-label="Previous campaign"
+              className="carousel-control"
+              onClick={() => moveCampaign(-1)}
+              disabled={!hasMultipleCampaigns}
+            >
+              <ChevronLeftIcon />
+            </IconButton>
+            <IconButton
+              type="button"
+              aria-label="Next campaign"
+              className="carousel-control"
+              onClick={() => moveCampaign(1)}
+              disabled={!hasMultipleCampaigns}
+            >
+              <ChevronRightIcon />
+            </IconButton>
+          </Stack>
+        </Box>
+        <Box
+          className="featured-campaign-carousel-viewport"
+          onPointerDown={handleCarouselPointerDown}
+          onPointerUp={handleCarouselPointerUp}
+          onPointerCancel={handleCarouselPointerCancel}
+        >
+          <Box
+            className={`featured-campaign-carousel-track is-${carouselTransition.phase} ${
+              carouselTransition.direction > 0
+                ? "is-sliding-next"
+                : carouselTransition.direction < 0
+                  ? "is-sliding-prev"
+                  : ""
+            }`}
+            onTransitionEnd={completeCarouselTransition}
+          >
+            {getCarouselPanels().map((campaignIndex, panelIndex) => {
+              const campaign = liveCampaigns[campaignIndex];
+              const isCurrentPanel = panelIndex === 1;
+
+              return (
+                <Box
+                  key={`${campaign.id}-${panelIndex}`}
+                  className="featured-campaign-carousel"
+                  aria-label={isCurrentPanel ? "Live campaigns" : undefined}
+                  aria-hidden={!isCurrentPanel}
+                >
+                  <Paper
+                    component={RouterLink}
+                    to={`/act/${campaign.slug}`}
+                    variant="outlined"
+                    className="campaign-card campaign-feature-card campaign-feature-link"
+                    aria-label={`Open ${campaign.title}`}
+                    tabIndex={isCurrentPanel ? 0 : -1}
+                  >
+                    <Box className="campaign-feature-media">
+                      <img src={campaign.imageUrl} alt="" />
+                    </Box>
+                    <Stack spacing={1.1} className="campaign-feature-copy">
+                      <Typography variant="h3">{campaign.title}</Typography>
+                      <Typography color="text.secondary">
+                        {campaign.description}
+                      </Typography>
+                      <Box className="campaign-feature-cta" aria-hidden="true">
+                        <span>Open sharing page</span>
+                      </Box>
+                    </Stack>
+                  </Paper>
+                </Box>
+              );
+            })}
+          </Box>
+        </Box>
+        {hasMultipleCampaigns && (
+          <Box className="campaign-carousel-dots" aria-label="Campaign slides">
+            {liveCampaigns.map((campaign, index) => (
+              <button
+                key={campaign.id}
+                type="button"
+                className={index === displayedCampaignIndex ? "is-active" : ""}
+                aria-label={`Show ${campaign.title}`}
+                aria-current={index === displayedCampaignIndex}
+                onClick={() => showCampaign(index)}
+              />
+            ))}
+          </Box>
+        )}
+      </Stack>
+    );
+  }
+
   return (
     <Container maxWidth="lg" className="page-shell">
       <Box className="home-hero">
-        <Stack spacing={2} sx={{ maxWidth: 780 }}>
-          <Typography variant="h1">Amplify</Typography>
+        <Stack spacing={2} className="home-hero-heading">
+          <Typography variant="h1">
+            <span className="brush-highlight">Amplify</span>
+          </Typography>
           <Typography variant="h2" className="hero-subtitle">
-            Campaign messages for organising through{" "}
-            <span className="brush-highlight">real relationships</span>.
-          </Typography>
-          <Typography className="hero-copy">
-            Billionaires, oligarchs and loser tech-bros can buy our social
-            networks, newspapers and TV stations. They can flood the internet
-            with bots. They can manipulate algorithms and platform policies to
-            push misinformation, advertising and far-right propaganda.
-          </Typography>
-          <Typography className="hero-copy">
-            But what they don't have, and can't take from us, are the real,
-            natural relationships that ordinary people have with our friends,
-            colleagues, neighbours, and family. And there is no amount of
-            money or bots, no suppressive algorithm, and no AI-generated slop
-            that can outweigh a real message from a trusted friend.
-          </Typography>
-          <Typography className="hero-copy">
-            That's what this tool is for: for organisers to make use of the
-            organic networks of members and supporters to amplify our messages,
-            despite the best efforts of people like Musk and Zuckerberg.
+            Cut through the algorithms and the noise
           </Typography>
         </Stack>
+        <Box className="home-hero-layout">
+          <Stack spacing={2} className="home-hero-copy">
+            <Typography className="hero-copy">
+              Billionares, oligarchs and loser tech-bros can buy our social
+              networks, newspapers and TV stations. They can flood the internet
+              with bots. They can manipulate algorithms and platform policies to
+              push misinformation and advertising.
+            </Typography>
+            <Typography className="hero-copy">
+              But what they don&apos;t have - and can&apos;t take from us - are the
+              real, natural relationships that ordinary people have with our
+              friends, colleagues, neighbours, and family. And there is no amount
+              of money, no suppressive algorithm, no AI-generated slop that can
+              outweigh a real message from a trusted friend.
+            </Typography>
+            <Typography className="hero-copy">
+              That&apos;s what this tool is for: for organisers to make use the
+              organic networks of members and supporters to amplify our messages
+              - despite the best efforts of Musk and Zuckerberg.
+            </Typography>
+          </Stack>
+          {renderCampaignCarousel()}
+        </Box>
       </Box>
 
       <Box className="content-band use-cases-band">
         <Box className="use-case-grid">
           {useCases.map(({ title, copy }) => (
-            <Box key={title} className="use-case-card" tabIndex={0}>
+            <Box key={title} className="use-case-card">
               <Typography variant="h3">{title}</Typography>
               <Typography color="text.secondary">{copy}</Typography>
             </Box>
           ))}
         </Box>
-      </Box>
-
-      <Box className="content-band">
-        <Stack spacing={2}>
-          <Box className="campaign-section-heading">
-            <Typography variant="h2" className="section-heading">
-              Active campaigns
-            </Typography>
-            <Stack direction="row" spacing={1} className="campaign-carousel-controls">
-              <IconButton
-                type="button"
-                aria-label="Previous campaign"
-                className="carousel-control"
-                onClick={() => moveCampaign(-1)}
-                disabled={!hasMultipleCampaigns}
-              >
-                <ChevronLeftIcon />
-              </IconButton>
-              <IconButton
-                type="button"
-                aria-label="Next campaign"
-                className="carousel-control"
-                onClick={() => moveCampaign(1)}
-                disabled={!hasMultipleCampaigns}
-              >
-                <ChevronRightIcon />
-              </IconButton>
-            </Stack>
-          </Box>
-          <Box
-            className="featured-campaign-carousel-viewport"
-            onPointerDown={handleCarouselPointerDown}
-            onPointerUp={handleCarouselPointerUp}
-            onPointerCancel={handleCarouselPointerCancel}
-          >
-            <Box
-              className={`featured-campaign-carousel-track is-${carouselTransition.phase} ${
-                carouselTransition.direction > 0
-                  ? "is-sliding-next"
-                  : carouselTransition.direction < 0
-                    ? "is-sliding-prev"
-                    : ""
-              }`}
-              onTransitionEnd={completeCarouselTransition}
-            >
-              {getCarouselPanels().map((campaignIndex, panelIndex) => {
-                const campaign = campaigns[campaignIndex];
-                const isCurrentPanel = panelIndex === 1;
-
-                return (
-                  <Box
-                    key={`${campaign.id}-${panelIndex}`}
-                    className="featured-campaign-carousel"
-                    aria-label={isCurrentPanel ? "Active campaigns" : undefined}
-                    aria-hidden={!isCurrentPanel}
-                  >
-                    {hasMultipleCampaigns && (
-                      <button
-                        type="button"
-                        tabIndex={isCurrentPanel ? 0 : -1}
-                        className="campaign-peek campaign-peek-left"
-                        onClick={() => moveCampaign(-1)}
-                        aria-label={`Show ${getCampaignFromIndex(campaignIndex, -1).title}`}
-                      >
-                        <img
-                          src={getCampaignFromIndex(campaignIndex, -1).imageUrl}
-                          alt=""
-                        />
-                        <span>{getCampaignFromIndex(campaignIndex, -1).title}</span>
-                      </button>
-                    )}
-
-                    <Paper
-                      variant="outlined"
-                      className="campaign-card campaign-feature-card"
-                    >
-                      <Box className="campaign-feature-media">
-                        <img src={campaign.imageUrl} alt="" />
-                      </Box>
-                      <Stack spacing={1.25} className="campaign-feature-copy">
-                        <Chip label={campaign.eyebrow} size="small" />
-                        <Typography variant="h3">{campaign.title}</Typography>
-                        <Typography color="text.secondary">
-                          {campaign.description}
-                        </Typography>
-                        <Button
-                          component={RouterLink}
-                          to={`/act/${campaign.slug}`}
-                          endIcon={<ArrowForwardIcon />}
-                          sx={{ alignSelf: "flex-start" }}
-                          tabIndex={isCurrentPanel ? 0 : -1}
-                        >
-                          Open sharing page
-                        </Button>
-                      </Stack>
-                    </Paper>
-
-                    {hasMultipleCampaigns && (
-                      <button
-                        type="button"
-                        tabIndex={isCurrentPanel ? 0 : -1}
-                        className="campaign-peek campaign-peek-right"
-                        onClick={() => moveCampaign(1)}
-                        aria-label={`Show ${getCampaignFromIndex(campaignIndex, 1).title}`}
-                      >
-                        <img
-                          src={getCampaignFromIndex(campaignIndex, 1).imageUrl}
-                          alt=""
-                        />
-                        <span>{getCampaignFromIndex(campaignIndex, 1).title}</span>
-                      </button>
-                    )}
-                  </Box>
-                );
-              })}
-            </Box>
-          </Box>
-          {hasMultipleCampaigns && (
-            <Box className="campaign-carousel-dots" aria-label="Campaign slides">
-              {campaigns.map((campaign, index) => (
-                <button
-                  key={campaign.id}
-                  type="button"
-                  className={index === displayedCampaignIndex ? "is-active" : ""}
-                  aria-label={`Show ${campaign.title}`}
-                  aria-current={index === displayedCampaignIndex}
-                  onClick={() => showCampaign(index)}
-                />
-              ))}
-            </Box>
-          )}
-        </Stack>
       </Box>
 
       <Box component="footer" className="home-footer">
@@ -366,7 +359,7 @@ export default function Home() {
         </Box>
         <Button
           component={RouterLink}
-          to="/admin"
+          to="/create"
           variant="outlined"
           startIcon={<BuildIcon />}
           className="home-footer-action"

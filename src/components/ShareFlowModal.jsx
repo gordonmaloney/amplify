@@ -69,6 +69,15 @@ export default function ShareFlowModal({
   const shouldCopyText = !canOpenPreparedShare || needsManualImage;
   const hasOnlyOpenStep = !shouldCopyText && !needsManualImage;
   const copyFailed = copyStatus === "failed";
+  const isCopyLike =
+    activeShareCard.platform === "copy" ||
+    activeShareCard.platform === "native_share";
+  const modalTitle = isCopyLike
+    ? "Copy message"
+    : `Send on ${activeShareCard.platformLabel}`;
+  const openTargetLabel = isCopyLike
+    ? "wherever you want to send it"
+    : activeShareCard.platformLabel;
   const nextAction = getNextAction({ completedRoute });
   const nextActionCopy = getNextActionCopy(nextAction);
   const boostContent = getBoostContent(campaign);
@@ -88,15 +97,23 @@ export default function ShareFlowModal({
       status: copyStatus,
       icon: <ContentCopyIcon />,
       title:
-        copyStatus === "done"
-          ? "Your template has been copied"
+        isCopyLike && copyStatus === "done"
+          ? "Your message has been copied"
+          : copyStatus === "done"
+            ? "Your template has been copied"
           : copyStatus === "failed"
             ? "Copying needs a hand"
-            : "Copying your template",
+            : isCopyLike
+              ? "Copying your message"
+              : "Copying your template",
       body:
         copyStatus === "failed"
-          ? "Your browser blocked automatic copying."
-          : "The message is ready on your clipboard, so you can paste it if the platform asks.",
+          ? isCopyLike
+            ? "Copy it manually below, then paste it wherever you want to send it."
+            : "Your browser blocked automatic copying."
+          : isCopyLike
+            ? "Paste it into the app, group, feed, email or message thread you want to use."
+            : "The message is ready on your clipboard, so you can paste it if the platform asks.",
       actionLabel: "Copy text",
       actionPrefix: "Didn't work?",
       onAction: copyAgain,
@@ -132,11 +149,14 @@ export default function ShareFlowModal({
     key: "open",
     status: "ready",
     icon: <OpenInNewIcon />,
-    title: `Now open ${activeShareCard.platformLabel}`,
+    title: isCopyLike
+      ? "Now send it yourself"
+      : `Now open ${activeShareCard.platformLabel}`,
     body: getFinalInstruction({
       canOpenPreparedShare,
       copyFailed,
       needsManualImage,
+      platform: activeShareCard.platform,
       platformLabel: activeShareCard.platformLabel,
       shouldCopyText,
     }),
@@ -259,9 +279,7 @@ export default function ShareFlowModal({
             fontSize="small"
           />
           <span>
-            {isBoostStage
-              ? "Boost original post"
-              : `Send on ${shareCard.platformLabel}`}
+            {isBoostStage ? "Boost original post" : modalTitle}
           </span>
         </Stack>
         <IconButton
@@ -455,7 +473,7 @@ export default function ShareFlowModal({
                       underline="none"
                       className="share-flow-recovery-action"
                     >
-                      Open {shareCard.platformLabel} again
+                      Open {openTargetLabel} again
                     </Button>
                   )}
                   <Button
@@ -471,7 +489,9 @@ export default function ShareFlowModal({
           ) : (
             <Stack spacing={2.25} className="share-flow-steps-panel">
               <Typography className="share-flow-intro">
-                {shouldCopyText || needsManualImage
+                {isCopyLike
+                  ? "Amplify is copying the message so you can paste it into whichever app, group, feed or thread you want to use."
+                  : shouldCopyText || needsManualImage
                   ? `Amplify is getting the template ready for you. Once the final step is ready, finish the post inside ${shareCard.platformLabel}.`
                   : `No copy and paste needed. Open ${shareCard.platformLabel} with your message already prepared, then review and send it.`}
               </Typography>
@@ -512,7 +532,7 @@ export default function ShareFlowModal({
                     onClick={scheduleNextActionStage}
                     className="share-flow-action share-flow-primary-action"
                   >
-                    Open {shareCard.platformLabel}
+                    Open {openTargetLabel}
                     {hasOnlyOpenStep ? " now" : ""}
                   </Button>
                 )}
@@ -557,19 +577,52 @@ function BoostOriginalPostPreview({ boostStage, onOpenOriginal }) {
         </Box>
 
         {boostStage.canEmbed && (
-          <InstagramPostEmbed
-            url={boostStage.url}
-            onReady={handleEmbedReady}
-            onFallback={handleEmbedFallback}
-          />
-        )}
-
-        {showEmbedLoading && (
-          <Box className="share-flow-embed-loading" aria-live="polite">
-            <Box className="share-flow-embed-loading-icon">
-              <PlatformIcon platform={boostStage.platform} fontSize="small" />
-            </Box>
-            <Typography>Loading original post...</Typography>
+          <Box
+            className="share-flow-embed-frame"
+            data-loading={showEmbedLoading}
+          >
+            {showEmbedLoading && (
+              <Box className="share-flow-embed-placeholder" aria-hidden="true">
+                <Box className="share-flow-original-post-icon">
+                  <PlatformIcon platform={boostStage.platform} fontSize="small" />
+                </Box>
+                <Stack spacing={1.25} className="share-flow-original-post-copy">
+                  <Stack
+                    direction="row"
+                    flexWrap="wrap"
+                    gap={0.75}
+                    className="share-flow-boost-meta-row"
+                  >
+                    <Box component="span">{boostStage.platformLabel}</Box>
+                    <Box component="span">{boostStage.contentTypeLabel}</Box>
+                  </Stack>
+                  <Typography className="share-flow-original-post-title">
+                    {boostStage.title}
+                  </Typography>
+                  <Typography className="share-flow-boost-url">
+                    {boostStage.url}
+                  </Typography>
+                </Stack>
+              </Box>
+            )}
+            <InstagramPostEmbed
+              url={boostStage.url}
+              onReady={handleEmbedReady}
+              onFallback={handleEmbedFallback}
+            />
+            {showEmbedLoading && (
+              <Box className="share-flow-embed-loading" aria-live="polite">
+                <Typography className="share-flow-embed-loading-kicker">
+                  Preparing Instagram embed
+                </Typography>
+                <Typography className="share-flow-embed-loading-label">
+                  Loading original post
+                </Typography>
+                <Box className="share-flow-embed-loading-track" aria-hidden="true">
+                  <Box className="share-flow-embed-loading-progress" />
+                </Box>
+              </Box>
+            )}
           </Box>
         )}
 

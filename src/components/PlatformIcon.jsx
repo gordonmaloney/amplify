@@ -4,6 +4,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import PublicIcon from "@mui/icons-material/Public";
+import IosShareIcon from "@mui/icons-material/IosShare";
 import SmsIcon from "@mui/icons-material/Sms";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import XIcon from "@mui/icons-material/X";
@@ -49,6 +50,8 @@ export default function PlatformIcon({ platform, ...props }) {
       return <SmsIcon {...props} />;
     case "copy":
       return <ContentCopyIcon {...props} />;
+    case "native_share":
+      return <IosShareIcon {...props} />;
     default:
       return <PublicIcon {...props} />;
   }

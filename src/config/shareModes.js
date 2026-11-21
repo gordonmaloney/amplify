@@ -44,6 +44,7 @@ const channelLabels = {
     messenger: "Messenger / DM",
     dm: "Messenger / DM",
     copy: "Copy",
+    native_share: "Share sheet",
   },
   [SHARING_MODE_IDS.groupOrFeed]: {
     whatsapp: "WhatsApp group",
@@ -54,6 +55,7 @@ const channelLabels = {
     x: "X",
     bluesky: "Bluesky",
     copy: "Copy",
+    native_share: "Share sheet",
   },
 };
 
@@ -64,6 +66,7 @@ const messageLabels = {
     messenger: "Your direct message",
     dm: "Your direct message",
     copy: "Your message",
+    native_share: "Your message",
   },
   [SHARING_MODE_IDS.groupOrFeed]: {
     whatsapp: "Your group message",
@@ -74,6 +77,7 @@ const messageLabels = {
     x: "Your post",
     bluesky: "Your post",
     copy: "Your message",
+    native_share: "Your message",
   },
 };
 
@@ -106,7 +110,11 @@ export function getMessageTitle(platform, modeId) {
   return messageLabels[mode.id]?.[platform] || mode.fallbackMessageTitle;
 }
 
-export function getCardsForSharingMode(shareCards, modeId) {
+export function getCardsForSharingMode(
+  shareCards,
+  modeId,
+  { preferNativeShare = false } = {}
+) {
   const mode = getSharingMode(modeId);
   const platformSet = new Set(mode.platforms);
   const cards = shareCards
@@ -122,15 +130,16 @@ export function getCardsForSharingMode(shareCards, modeId) {
 
   const copySource = getCopySourceCard(shareCards, mode.id);
   if (copySource) {
+    const manualPlatform = preferNativeShare ? "native_share" : "copy";
     orderedCards.push({
       ...copySource,
-      id: `copy-${mode.id}`,
-      platform: "copy",
-      platformLabel: "Copy",
-      title: "Copy message",
+      id: `${manualPlatform}-${mode.id}`,
+      platform: manualPlatform,
+      platformLabel: preferNativeShare ? "Share sheet" : "Copy",
+      title: preferNativeShare ? "Open phone share sheet" : "Copy message",
       guidance: "",
       requiresImage: false,
-      shareMode: "manual",
+      shareMode: preferNativeShare ? "native" : "manual",
     });
   }
 
